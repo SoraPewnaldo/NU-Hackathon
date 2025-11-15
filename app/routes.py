@@ -169,71 +169,239 @@ def hod_dashboard():
 
 
 @main.route("/faculty/dashboard")
-@login_required
-@roles_required("faculty", "hod", "admin")
-def faculty_dashboard():
-    faculty = current_user.faculty_profile  # linked via Faculty.user_id
 
-    # Latest generated timetable
+
+@login_required @roles_required("faculty", "hod", "admin")
+
+
+def faculty_dashboard():
+
+
+    # 1) Find the Faculty row for this logged-in user
+
+
+    faculty = Faculty.query.filter_by(user_id=current_user.id).first()
+
+
+
+
+
     latest_tt = Timetable.query.order_by(Timetable.created_at.desc()).first()
 
-    # If no timetable yet, just render the page with a message
+
+
+
+
+    # If no faculty record or no timetable → show empty grid + message
+
+
     if not latest_tt or not faculty:
+
+
+        if not faculty:
+
+
+            flash("Your user is not linked to any Faculty record (user_id).", "warning")
+
+
+        elif not latest_tt:
+
+
+            flash("No timetable has been generated yet.", "warning")
+
+
+
+
+
         return render_template(
+
+
             "faculty_dashboard.html",
+
+
             user=current_user,
+
+
             days=[],
+
+
             periods=[],
+
+
             grid={},
+
+
         )
 
-    # Get all timeslots (Mon–Sat, multiple periods per day)
+
+
+
+
+    # 2) All timeslots
+
+
     all_slots = Timeslot.query.order_by(
+
+
         Timeslot.day_of_week,
+
+
         Timeslot.start_time
+
+
     ).all()
 
-    # 1) Build list of unique periods: (start_time, end_time)
+
+
+
+
+    # Unique periods (columns)
+
+
     periods = []
+
+
     for ts in all_slots:
+
+
         key = (ts.start_time, ts.end_time)
+
+
         if key not in periods:
+
+
             periods.append(key)
 
-    # 2) Day indices + labels
+
+
+
+
+    # Day indices + labels (rows)
+
+
     days = [
+
+
         (0, "MON"),
+
+
         (1, "TUE"),
+
+
         (2, "WED"),
+
+
         (3, "THU"),
+
+
         (4, "FRI"),
+
+
         (5, "SAT"),
+
+
     ]
 
-    # 3) Build grid: (day_index, period_index) -> entry (for this faculty only)
-    grid = {}
+
+
+
+
+    # 3) Get all entries for THIS faculty in the latest timetable
+
 
     entries = (
+
+
         TimetableEntry.query
+
+
         .filter_by(timetable_id=latest_tt.id, faculty_id=faculty.id)
+
+
         .all()
+
+
     )
 
+
+
+
+
+    # 4) Build grid: (day_index, period_index) -> entry
+
+
+    grid = {}
+
+
     for e in entries:
+
+
         ts = e.timeslot
+
+
         key = (ts.start_time, ts.end_time)
+
+
         if key not in periods:
+
+
             continue
-        p_idx = periods.index(key)          # which column
-        d_idx = ts.day_of_week             # which row
+
+
+        p_idx = periods.index(key)
+
+
+        d_idx = ts.day_of_week
+
+
         grid[(d_idx, p_idx)] = e
 
+
+
+
+
+    # If entries is empty, we’ll show all "No Class" – which might be correct
+
+
+    if not entries:
+
+
+        flash(
+
+
+            f"No classes assigned to you in timetable #{latest_tt.id}. "
+
+
+            "Check FacultySubject mapping & scheduler.",
+
+
+            "info",
+
+
+        )
+
+
+
+
+
     return render_template(
+
+
         "faculty_dashboard.html",
+
+
         user=current_user,
+
+
         days=days,
+
+
         periods=periods,
+
+
         grid=grid,
+
+
     )
 
 
