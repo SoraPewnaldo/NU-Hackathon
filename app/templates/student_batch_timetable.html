@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}Batch Timetable · Student{% endblock %}
+{% block content %}
+
+<div class="section-header">
+    <h2>Batch Timetable</h2>
+    <span class="text-muted-soft">
+        View timetable for a specific batch from the latest generated timetable.
+    </span>
+</div>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <form method="POST" class="row g-2 align-items-end">
+            <div class="col-md-6">
+                <label class="form-label">Select Batch</label>
+                <select name="batch_id" class="form-select" required>
+                    <option value="" disabled {% if not selected_batch_id %}selected{% endif %}>
+                        Choose...
+                    </option>
+                    {% for batch in batches %}
+                        <option value="{{ batch.id }}"
+                            {% if selected_batch_id == batch.id %}selected{% endif %}>
+                            {{ batch.name }} (Sem {{ batch.semester }})
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <button type="submit" class="btn btn-primary w-100">Show Timetable</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% if selected_batch_id %}
+    <div class="card">
+        <div class="card-body">
+            <div class="timetable-grid">
+                <div class="timetable-cell timetable-header">Time</div>
+                <div class="timetable-cell timetable-header">Class</div>
+
+                {% for slot in timeslots %}
+                    <div class="timetable-cell timetable-header">
+                        {{ day_names[slot.day_of_week] }}<br>
+                        {{ slot.start_time.strftime("%H:%M") }}–{{ slot.end_time.strftime("%H:%M") }}
+                    </div>
+                    <div class="timetable-cell">
+                        {% set e = entries_map.get(slot.id) %}
+                        {% if e %}
+                            <strong>{{ e.subject.code }}</strong> {{ e.subject.name }}<br>
+                            <span class="text-muted-soft">
+                                Room {{ e.room.name }} · {{ e.faculty.name }}
+                            </span>
+                        {% else %}
+                            <span class="text-muted-soft">No class</span>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+{% endif %}
+
+{% endblock %}

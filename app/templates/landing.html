@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Intelligent Timetable · Welcome{% endblock %}
+{% block content %}
+
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="text-center mb-4">
+            <h1 class="h2 mb-2">Intelligent Timetable</h1>
+            <p class="text-muted-soft">
+                AI-powered timetable generation for admins, HODs, faculty, and students.
+                No more clashes, manual spreadsheets, or juggling rooms.
+            </p>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">What you can do</h5>
+                <ul>
+                    <li><strong>Admins</strong>: configure data & generate full timetables.</li>
+                    <li><strong>HODs</strong>: review department timetables & conflicts.</li>
+                    <li><strong>Faculty</strong>: view your personal weekly schedule.</li>
+                    <li><strong>Students</strong>: see your batch timetable.</li>
+                </ul>
+                <div class="text-center mt-3">
+                    <a href="{{ url_for('main.login') }}" class="btn btn-primary">
+                        Go to Login
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <p class="text-muted-soft text-center">
+            Demo users: admin / hod_cse / fac_alice / stud_bob
+        </p>
+    </div>
+</div>
+
+{% endblock %}

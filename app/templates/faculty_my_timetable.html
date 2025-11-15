@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}My Timetable · Faculty{% endblock %}
+{% block content %}
+
+<div class="section-header">
+    <h2>My Timetable</h2>
+    <span class="text-muted-soft">
+        {{ faculty.name }} · {{ timetable.name }}
+    </span>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <p class="text-muted-soft mb-3">
+            Showing your classes from the latest generated timetable.
+        </p>
+
+        <div class="timetable-grid">
+            <div class="timetable-cell timetable-header">Time</div>
+            <div class="timetable-cell timetable-header">Details</div>
+
+            {% for slot in timeslots %}
+                <div class="timetable-cell timetable-header">
+                    {{ day_names[slot.day_of_week] }}<br>
+                    {{ slot.start_time.strftime("%H:%M") }}–{{ slot.end_time.strftime("%H:%M") }}
+                </div>
+                <div class="timetable-cell">
+                    {% set entries_for_slot = slot_entries.get(slot.id, []) %}
+                    {% if entries_for_slot %}
+                        {% for e in entries_for_slot %}
+                            <strong>{{ e.subject.code }}</strong> {{ e.subject.name }}<br>
+                            <span class="text-muted-soft">
+                                Batch {{ e.batch.name }} · Room {{ e.room.name }}
+                            </span>
+                            {% if not loop.last %}<hr>{% endif %}
+                        {% endfor %}
+                    {% else %}
+                        <span class="text-muted-soft">No class</span>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+{% endblock %}

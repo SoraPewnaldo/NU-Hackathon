@@ -43,15 +43,19 @@
 
                     {% if current_user.is_faculty() %}
                         <li class="nav-item">
-                            <a class="nav-link" href="{{ url_for('main.faculty_dashboard') }}">Faculty</a>
+                            <a class="nav-link" href="{{ url_for('main.faculty_my_timetable') }}">My Timetable</a>
                         </li>
                     {% endif %}
 
                     {% if current_user.is_student() %}
                         <li class="nav-item">
-                            <a class="nav-link" href="{{ url_for('main.student_dashboard') }}">Student</a>
+                            <a class="nav-link" href="{{ url_for('main.student_batch_timetable') }}">Batch Timetable</a>
                         </li>
                     {% endif %}
+
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('main.list_timetables') }}">Timetables</a>
+                    </li>
 
                     <li class="nav-item">
                         <span class="nav-link disabled text-muted">
