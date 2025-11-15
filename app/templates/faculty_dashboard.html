@@ -3,19 +3,6 @@
 
 {% block content %}
 
-{% if notifications %}
-<div class="notification-panel mb-4">
-  <h3>Notifications</h3>
-  <ul class="list-unstyled">
-    {% for n in notifications %}
-    <li>
-      {{ n.message }} <small>({{ n.created_at }})</small>
-    </li>
-    {% endfor %}
-  </ul>
-</div>
-{% endif %}
-
 <div class="section-header">
     <h2>Faculty Dashboard</h2>
     <span>Weekly schedule for {{ user.username }}</span>
@@ -107,5 +94,53 @@
         </div>
     </div>
 </div>
+
+<h3>Your Leave / Unavailability Requests</h3>
+<table border="1" cellpadding="6" cellspacing="0">
+  <tr>
+    <th>ID</th>
+    <th>Day</th>
+    <th>Timeslot</th>
+    <th>Status</th>
+    <th>Reason</th>
+  </tr>
+  {% for r in requests %}
+  <tr>
+    <td>{{ r.id }}</td>
+    <td>{{ r.day_of_week }}</td>
+    <td>
+      {% if r.timeslot %}
+        {{ r.timeslot.start_time.strftime("%H:%M") }}–{{ r.timeslot.end_time.strftime("%H:%M") }}
+      {% else %}
+        Full Day
+      {% endif %}
+    </td>
+    <td>{{ r.status }}</td>
+    <td>{{ r.reason }}</td>
+  </tr>
+  {% else %}
+  <tr>
+    <td colspan="5">No leave requests yet.</td>
+  </tr>
+  {% endfor %}
+</table>
+
+<h3>Notifications</h3>
+<table border="1" cellpadding="6" cellspacing="0">
+  <tr>
+    <th>Message</th>
+    <th>Time</th>
+  </tr>
+  {% for n in notifications %}
+  <tr>
+    <td>{{ n.message }}</td>
+    <td>{{ n.created_at }}</td>
+  </tr>
+  {% else %}
+  <tr>
+    <td colspan="2">No notifications.</td>
+  </tr>
+  {% endfor %}
+</table>
 
 {% endblock %}

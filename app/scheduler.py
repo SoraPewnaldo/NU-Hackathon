@@ -15,10 +15,11 @@ from .models import (
 from . import db
 
 
-def generate_timetable(name: str = "Auto Generated Timetable"):
+def generate_timetable(name: str = "Auto Generated Timetable", existing_timetable_id: int = None):
     """
     Build and solve a basic timetable using OR-Tools CP-SAT.
     Returns the created Timetable instance or None if no solution.
+    If existing_timetable_id is provided, it will update that timetable.
     """
 
     # We need an app context to talk to the DB when called from scripts/other code
@@ -240,8 +241,16 @@ def generate_timetable(name: str = "Auto Generated Timetable"):
         # --------------------------------------------------
         # 5) Save solution as Timetable + TimetableEntry rows
         # --------------------------------------------------
-        timetable = Timetable(name=name)
-        db.session.add(timetable)
+        if existing_timetable_id:
+            timetable = Timetable.query.get(existing_timetable_id)
+            if not timetable:
+                print(f"❌ Existing timetable with ID {existing_timetable_id} not found.")
+                return None
+            # Clear existing entries if updating an existing timetable
+            TimetableEntry.query.filter_by(timetable_id=existing_timetable_id).delete()
+        else:
+            timetable = Timetable(name=name, is_active=True)
+            db.session.add(timetable)
         db.session.commit()  # now timetable.id is available
 
         for c in range(num_classes):

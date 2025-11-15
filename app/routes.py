@@ -309,22 +309,24 @@ def dashboard():
 @login_required
 @roles_required("admin")
 def admin_dashboard():
-    latest_tt = Timetable.query.order_by(Timetable.created_at.desc()).first()
+    current_tt = Timetable.query.filter_by(is_active=True).order_by(Timetable.created_at.desc()).first()
     
     periods = build_periods()
     grid = {}
     has_timetable = False
 
-    if latest_tt:
+    if current_tt:
         entries = (
             TimetableEntry.query
-            .filter_by(timetable_id=latest_tt.id)
+            .filter_by(timetable_id=current_tt.id)
             .join(Timeslot)
             .order_by(Timeslot.day_of_week, Timeslot.start_time)
             .all()
         )
         grid = build_grid_for_entries(entries, periods)
         has_timetable = True
+    else:
+        flash("No active timetable has been generated yet.", "warning")
 
     total_students = User.query.filter_by(role="student").count()
 
@@ -338,7 +340,7 @@ def admin_dashboard():
     return render_template(
         "admin_dashboard.html",
         user=current_user,
-        latest_tt=latest_tt,
+        latest_tt=current_tt,
         has_timetable=has_timetable,
         days=DAYS,
         periods=periods,
@@ -524,21 +526,32 @@ def hod_dashboard():
 @login_required
 @roles_required("faculty", "hod", "admin")
 def faculty_dashboard():
-    # 1) Find the Faculty row for this logged-in user
-    faculty = Faculty.query.filter_by(user_id=current_user.id).first()
+    # 1) Get this faculty linked to the logged-in user
+    faculty = Faculty.query.filter_by(user_id=current_user.id).first_or_404()
 
-    notifications = Notification.query.filter_by(
-        user_id=current_user.id,
-        is_read=False,
-    ).order_by(Notification.created_at.desc()).all()
+    # 2) All leave/unavailability requests by this faculty
+    requests = (
+        FacultyUnavailability.query
+        .filter_by(faculty_id=faculty.id)
+        .order_by(FacultyUnavailability.id.desc())
+        .all()
+    )
 
-    latest_tt = Timetable.query.order_by(Timetable.created_at.desc()).first()
+    # 3) All notifications for this user (approved/rejected info etc.)
+    notifications = (
+        Notification.query
+        .filter_by(user_id=current_user.id)
+        .order_by(Notification.created_at.desc())
+        .all()
+    )
+
+    current_tt = Timetable.query.filter_by(is_active=True).order_by(Timetable.created_at.desc()).first()
 
     # If no faculty record or no timetable → show empty grid + message
-    if not latest_tt or not faculty:
+    if not current_tt or not faculty:
         if not faculty:
             flash("Your user is not linked to any Faculty record (user_id).", "warning")
-        elif not latest_tt:
+        elif not current_tt:
             flash("No timetable has been generated yet.", "warning")
 
         return render_template(
@@ -548,6 +561,7 @@ def faculty_dashboard():
             periods=[],
             grid={},
             notifications=notifications,
+            requests=requests,
         )
 
     # 2) All timeslots
@@ -576,7 +590,10 @@ def faculty_dashboard():
     # 3) Get all entries for THIS faculty in the latest timetable
     entries = (
         TimetableEntry.query
-        .filter_by(timetable_id=latest_tt.id, faculty_id=faculty.id)
+        .filter(
+            TimetableEntry.timetable_id == current_tt.id,
+            TimetableEntry.faculty_id == faculty.id
+        )
         .all()
     )
 
@@ -594,7 +611,7 @@ def faculty_dashboard():
     # If entries is empty, we’ll show all "No Class" – which might be correct
     if not entries:
         flash(
-            f"No classes assigned to you in timetable #{latest_tt.id}. "
+            f"No classes assigned to you in timetable #{current_tt.id}. "
             "Check FacultySubject mapping & scheduler.",
             "info",
         )
@@ -606,6 +623,7 @@ def faculty_dashboard():
         periods=periods,
         grid=grid,
         notifications=notifications,
+        requests=requests,
     )
 
 
@@ -618,9 +636,10 @@ def student_dashboard():
     if hasattr(current_user, "batch_id") and current_user.batch_id:
         student_batch = Batch.query.get(current_user.batch_id)
 
-    latest_tt = Timetable.query.order_by(Timetable.created_at.desc()).first()
+    current_tt = Timetable.query.filter_by(is_active=True).order_by(Timetable.created_at.desc()).first()
 
-    if not latest_tt or not student_batch:
+    if not current_tt or not student_batch:
+        flash("No timetable available or student not assigned to a batch.", "warning")
         return render_template(
             "student_dashboard.html",
             user=current_user,
@@ -654,7 +673,10 @@ def student_dashboard():
     # Build grid for this batch
     entries = (
         TimetableEntry.query
-        .filter_by(timetable_id=latest_tt.id, batch_id=student_batch.id)
+        .filter(
+            TimetableEntry.timetable_id == current_tt.id,
+            TimetableEntry.batch_id == student_batch.id
+        )
         .all()
     )
 
@@ -681,12 +703,22 @@ def student_dashboard():
 @login_required
 @roles_required("admin")
 def admin_generate_timetable():
-    tt = generate_timetable("Admin Generated Timetable")
+    # 1. Deactivate old timetables
+    Timetable.query.update({Timetable.is_active: False})
+    db.session.commit()
+
+    # 2. Create a new one and mark active
+    new_tt = Timetable(name=f"Timetable Generated on {datetime.now().strftime('%Y-%m-%d %H:%M')}", is_active=True)
+    db.session.add(new_tt)
+    db.session.commit()
+
+    # 3. Generate entries using new_tt.id
+    tt = generate_timetable(new_tt.name, new_tt.id) # Pass new_tt.id to generate_timetable
 
     if tt is None:
         flash("Failed to generate timetable. Check data and constraints.", "danger")
     else:
-        flash(f"Timetable #{tt.id} generated with {tt.entries.count()} entries.", "success")
+        flash(f"Timetable #{tt.id} generated with {tt.entries.count()} entries and set as active.", "success")
 
     return redirect(url_for("main.admin_dashboard"))
 

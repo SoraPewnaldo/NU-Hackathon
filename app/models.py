@@ -211,6 +211,7 @@ class Timetable(db.Model):
     name = db.Column(db.String(128), nullable=False)  # e.g. "CSE Sem4 v1"
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     status = db.Column(db.String(32), default="generated")  # generated/final/archived
+    is_active = db.Column(db.Boolean, default=True)  # <--- important
 
     entries = db.relationship(
         "TimetableEntry",
