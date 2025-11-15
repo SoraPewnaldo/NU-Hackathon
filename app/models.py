@@ -14,17 +14,38 @@ def load_user(user_id):
 class User(UserMixin, db.Model):
     __tablename__ = "user"
 
+    # ---- ROLE CONSTANTS ----
+    ROLE_ADMIN = "admin"
+    ROLE_HOD = "hod"            # department head
+    ROLE_FACULTY = "faculty"
+    ROLE_STUDENT = "student"
+
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(64), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(128), nullable=False)
-    role = db.Column(db.String(20), default='faculty')  # admin / hod / faculty
+
+    # default = faculty so normal users become faculty by default
+    role = db.Column(db.String(20), default=ROLE_FACULTY, nullable=False)
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
 
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
+
+    # ---- HELPER METHODS ----
+    def is_admin(self):
+        return self.role == self.ROLE_ADMIN
+
+    def is_hod(self):
+        return self.role == self.ROLE_HOD
+
+    def is_faculty(self):
+        return self.role == self.ROLE_FACULTY
+
+    def is_student(self):
+        return self.role == self.ROLE_STUDENT
 
     def __repr__(self):
         return f"<User {self.username} ({self.role})>"

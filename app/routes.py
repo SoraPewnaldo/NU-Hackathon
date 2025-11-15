@@ -2,6 +2,28 @@ from flask import Blueprint, render_template, redirect, url_for, request, flash
 from flask_login import login_user, logout_user, login_required, current_user
 from .models import User
 from . import db
+from functools import wraps
+
+def roles_required(*roles):
+    """
+    Usage:
+        @roles_required("admin")
+        @roles_required("admin", "hod")
+    """
+    def decorator(view_func):
+        @wraps(view_func)
+        def wrapper(*args, **kwargs):
+            if not current_user.is_authenticated:
+                # user not logged in -> send to login
+                return redirect(url_for("main.login"))
+
+            if current_user.role not in roles:
+                flash("You do not have permission to access this page.", "danger")
+                return redirect(url_for("main.dashboard"))
+
+            return view_func(*args, **kwargs)
+        return wrapper
+    return decorator
 
 main = Blueprint("main", __name__)
 

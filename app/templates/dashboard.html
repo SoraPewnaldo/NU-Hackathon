@@ -3,16 +3,47 @@
 <div class="row">
     <div class="col-md-12">
         <h2>Dashboard</h2>
-        <p>Welcome, {{ user.username }}!</p>
+        <p>Welcome, {{ user.username }} ({{ user.role }})!</p>
 
-        <div class="alert alert-info">
-            This will later show:
-            <ul>
-                <li>Generate timetable button</li>
-                <li>Links to views for admin / HOD / faculty</li>
-                <li>Stats like clashes, room utilization, etc.</li>
-            </ul>
-        </div>
+        {% if user.is_admin() %}
+            <div class="alert alert-primary">
+                <strong>Admin Panel:</strong>
+                <ul>
+                    <li>Manage departments, faculties, batches</li>
+                    <li>Trigger timetable generation for all departments</li>
+                </ul>
+            </div>
+        {% endif %}
+
+        {% if user.is_hod() %}
+            <div class="alert alert-success">
+                <strong>HOD Panel:</strong>
+                <ul>
+                    <li>Review department timetable</li>
+                    <li>Approve / reject timetable versions</li>
+                </ul>
+            </div>
+        {% endif %}
+
+        {% if user.is_faculty() %}
+            <div class="alert alert-info">
+                <strong>Faculty View:</strong>
+                <ul>
+                    <li>See your personal timetable</li>
+                    <li>Request swaps / mark unavailability</li>
+                </ul>
+            </div>
+        {% endif %}
+
+        {% if user.is_student() %}
+            <div class="alert alert-warning">
+                <strong>Student View:</strong>
+                <ul>
+                    <li>See your batch timetable</li>
+                    <li>Check room changes / updates</li>
+                </ul>
+            </div>
+        {% endif %}
     </div>
 </div>
 {% endblock %}
