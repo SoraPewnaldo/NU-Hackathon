@@ -1,0 +1,32 @@
+4. Intelligent Timetable Optimization & Scheduling Assistant
+The Challenge: Educational institutions increasingly struggle with dynamic class scheduling due to
+limited infrastructure, overlapping departmental requirements, faculty constraints, and multidisciplinary
+course offerings.
+Traditional manual or spreadsheet-based timetable generation fails to handle real-time variables like
+faculty availability, room occupancy, teaching load norms, elective overlaps, and student preferences.
+The result is timetable clashes, underutilized classrooms, uneven workloads, and frustration for students
+and staff alike.
+What to Build:
+Develop a scheduling platform that autonomously generates and optimizes academic timetables across
+multiple departments, programs, and shifts. The system should consider the following parameters as
+variables for creating optimized timetables:
+• Number of classrooms available
+• Number of batches of students
+• Number of subjects to be taught in a particular semester
+• Names of subjects
+• Number of classes to be conducted for a subject per week/per day
+• Number of faculties available for different subjects
+(Students may also consider additional variables that may help in effective timetable preparation.)
+Demo Requirements:
+A functional web-based prototype that demonstrates:
+• Authorized login and role-based access (admin, department head, faculty)
+• Data entry module for faculty, rooms, subjects, and student batches
+• Real-time generation of multiple optimized timetable options
+• Clash detection and intelligent rearrangement suggestions by AI
+• Visualization dashboard showing room utilization, faculty load balance, and scheduling
+efficiency
+• Factor in dynamic inputs – real-time faculty availability, leaves, course prerequisites, room
+capacities, and elective combinations
+• Display workload imbalances or potential scheduling conflicts before finalization
+• Offer adaptive rescheduling in response to sudden changes (faculty leave, room unavailability,
+event scheduling)
