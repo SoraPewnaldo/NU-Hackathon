@@ -238,3 +238,8 @@ body.app-body {
     color: #008520; /* Green */
     font-weight: 700;
 }
+
+.period-number {
+    font-weight: 700;
+    margin-bottom: 2px;
+}

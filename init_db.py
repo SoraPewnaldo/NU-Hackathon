@@ -20,7 +20,7 @@ app = create_app()
 
 with app.app_context():
     # While testing, you can uncomment this to hard-reset:
-    # db.drop_all()
+    db.drop_all()
 
     db.create_all()
 
@@ -287,6 +287,7 @@ with app.app_context():
                     batch_id=batch.id,
                 )
                 db.session.add(student)
+                user.batch_id = batch.id # Assign batch_id to the User object
 
         db.session.commit()
         print(f"✅ Student profiles created: {Student.query.count()}")

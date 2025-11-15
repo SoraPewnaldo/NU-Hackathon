@@ -124,6 +124,113 @@ def admin_dashboard():
     )
 
 
+# -------------------------
+# ADMIN – MANAGE FACULTY
+# -------------------------
+
+@main.route("/admin/faculty", methods=["GET", "POST"])
+@login_required
+@roles_required("admin")
+def admin_manage_faculty():
+    # Handle simple "Add Faculty" in same page
+    if request.method == "POST":
+        name = request.form.get("name", "").strip()
+        code = request.form.get("code", "").strip()
+        max_load = request.form.get("max_load_per_week", "").strip()
+        user_id = request.form.get("user_id")  # optional link to User
+
+        if not name or not code:
+            flash("Name and code are required.", "danger")
+        else:
+            # Basic uniqueness check for code
+            existing = Faculty.query.filter_by(code=code).first()
+            if existing:
+                flash("Faculty code already exists.", "danger")
+            else:
+                try:
+                    max_load_val = int(max_load) if max_load else 16
+                except ValueError:
+                    max_load_val = 16
+
+                faculty = Faculty(
+                    name=name,
+                    code=code,
+                    max_load_per_week=max_load_val,
+                    user_id=int(user_id) if user_id else None,
+                )
+                db.session.add(faculty)
+                db.session.commit()
+                flash("Faculty added successfully.", "success")
+                return redirect(url_for("main.admin_manage_faculty"))
+
+    faculties = Faculty.query.order_by(Faculty.code).all()
+    users = User.query.order_by(User.username).all()
+
+    return render_template(
+        "admin_manage_faculty.html",
+        user=current_user,
+        faculties=faculties,
+        users=users,
+    )
+
+
+@main.route("/admin/faculty/<int:faculty_id>/edit", methods=["GET", "POST"])
+@login_required
+@roles_required("admin")
+def admin_edit_faculty(faculty_id):
+    faculty = Faculty.query.get_or_404(faculty_id)
+    users = User.query.order_by(User.username).all()
+
+    if request.method == "POST":
+        name = request.form.get("name", "").strip()
+        code = request.form.get("code", "").strip()
+        max_load = request.form.get("max_load_per_week", "").strip()
+        user_id = request.form.get("user_id")
+
+        if not name or not code:
+            flash("Name and code are required.", "danger")
+        else:
+            # Check code uniqueness for others
+            existing = Faculty.query.filter(
+                Faculty.code == code,
+                Faculty.id != faculty.id
+            ).first()
+            if existing:
+                flash("Another faculty already uses this code.", "danger")
+            else:
+                faculty.name = name
+                faculty.code = code
+                try:
+                    faculty.max_load_per_week = int(max_load) if max_load else 16
+                except ValueError:
+                    pass
+                faculty.user_id = int(user_id) if user_id else None
+
+                db.session.commit()
+                flash("Faculty updated.", "success")
+                return redirect(url_for("main.admin_manage_faculty"))
+
+    return render_template(
+        "admin_edit_faculty.html",
+        user=current_user,
+        faculty=faculty,
+        users=users,
+    )
+
+
+@main.route("/admin/faculty/<int:faculty_id>/delete", methods=["POST"])
+@login_required
+@roles_required("admin")
+def admin_delete_faculty(faculty_id):
+    faculty = Faculty.query.get_or_404(faculty_id)
+
+    # TODO: in the future check if faculty has timetable entries etc.
+    db.session.delete(faculty)
+    db.session.commit()
+    flash("Faculty deleted.", "info")
+    return redirect(url_for("main.admin_manage_faculty"))
+
+
 @main.route("/admin/batches")
 @login_required
 def admin_batches():
@@ -169,9 +276,8 @@ def hod_dashboard():
 
 
 @main.route("/faculty/dashboard")
-
-
-@login_required @roles_required("faculty", "hod", "admin")
+@login_required
+@roles_required("faculty", "hod", "admin")
 
 
 def faculty_dashboard():
@@ -407,36 +513,70 @@ def faculty_dashboard():
 
 @main.route("/student/dashboard")
 @login_required
-@roles_required("student", "admin")  # admin can impersonate/check student view
+@roles_required("student", "admin")
 def student_dashboard():
-    # TODO: link user to a Batch via a real relation.
-    # For now, pick first batch as demo:
-    batch = Batch.query.first()
+    # Student → Batch mapping (assumes User has batch_id)
+    student_batch = None
+    if hasattr(current_user, "batch_id") and current_user.batch_id:
+        student_batch = Batch.query.get(current_user.batch_id)
 
     latest_tt = Timetable.query.order_by(Timetable.created_at.desc()).first()
-    if not latest_tt or not batch:
-        return render_template("student_dashboard.html", user=current_user, has_timetable=False)
 
-    periods = build_periods()
+    if not latest_tt or not student_batch:
+        return render_template(
+            "student_dashboard.html",
+            user=current_user,
+            batch=student_batch,
+            days=[],
+            periods=[],
+            grid={},
+        )
 
+    all_slots = Timeslot.query.order_by(
+        Timeslot.day_of_week,
+        Timeslot.start_time
+    ).all()
+
+    # Unique periods across all days
+    periods = []
+    for ts in all_slots:
+        key = (ts.start_time, ts.end_time)
+        if key not in periods:
+            periods.append(key)
+
+    days = [
+        (0, "MON"),
+        (1, "TUE"),
+        (2, "WED"),
+        (3, "THU"),
+        (4, "FRI"),
+        (5, "SAT"),
+    ]
+
+    # Build grid for this batch
     entries = (
         TimetableEntry.query
-        .filter_by(timetable_id=latest_tt.id, batch_id=batch.id)
-        .join(Timeslot)
-        .order_by(Timeslot.day_of_week, Timeslot.start_time)
+        .filter_by(timetable_id=latest_tt.id, batch_id=student_batch.id)
         .all()
     )
 
-    grid = build_grid_for_entries(entries, periods)
+    grid = {}
+    for e in entries:
+        ts = e.timeslot
+        key = (ts.start_time, ts.end_time)
+        if key not in periods:
+            continue
+        p_idx = periods.index(key)
+        d_idx = ts.day_of_week
+        grid[(d_idx, p_idx)] = e
 
     return render_template(
         "student_dashboard.html",
         user=current_user,
-        has_timetable=True,
-        days=DAYS,
+        batch=student_batch,
+        days=days,
         periods=periods,
         grid=grid,
-        batch=batch,
     )
 
 @main.route("/admin/generate_timetable", methods=["GET"])
@@ -541,12 +681,7 @@ def view_students():
     flash("Students page is under construction.", "info")
     return redirect(url_for("main.admin_dashboard"))
 
-@main.route("/faculty")
-@login_required
-@roles_required("admin", "hod")
-def view_faculty():
-    flash("Faculty page is under construction.", "info")
-    return redirect(url_for("main.admin_dashboard"))
+
 
 @main.route("/subjects")
 @login_required

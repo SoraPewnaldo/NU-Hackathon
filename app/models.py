@@ -27,6 +27,8 @@ class User(UserMixin, db.Model):
 
     # default = faculty so normal users become faculty by default
     role = db.Column(db.String(20), default=ROLE_FACULTY, nullable=False)
+    batch_id = db.Column(db.Integer, db.ForeignKey("batch.id"), nullable=True)
+    batch = db.relationship("Batch", backref="students")
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -120,7 +122,7 @@ class Student(db.Model):
 
     # relationships
     user = db.relationship("User", backref=db.backref("student_profile", uselist=False))
-    batch = db.relationship("Batch", backref=db.backref("students", lazy=True, cascade="all, delete-orphan"))
+    batch = db.relationship("Batch")
 
     def __repr__(self):
         return f"<Student {self.roll_no} - {self.name}>"
