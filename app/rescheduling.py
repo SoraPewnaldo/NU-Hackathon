@@ -3,51 +3,54 @@ from app.models import (
     FacultyUnavailability,
     TimetableEntry,
     Timeslot,
-    Faculty,
     FacultySubject,
-    Room,
-    Batch,
-    Subject,
 )
 
-def apply_faculty_unavailability(unav: FacultyUnavailability) -> int:
-    """
-    For an approved FacultyUnavailability:
-    1. Find all conflicting timetable entries.
-    2. Try to assign a replacement faculty for same slot.
-    3. If not possible, try to move that class to another timeslot.
-    4. If still not possible, mark as CANCELLED.
 
-    Returns: number of entries changed.
+def apply_faculty_unavailability(unav_id: int) -> int:
     """
+    Freshly load the unavailability from DB and update timetable.
+    """
+    unav = FacultyUnavailability.query.get(unav_id)
+    if not unav:
+        return 0
+
     faculty_id = unav.faculty_id
     day = unav.day_of_week
-    ts_id = unav.timeslot_id  # may be None = whole day
+    ts_id = unav.timeslot_id  # may be None = full day
 
     # 1. Find affected entries
-    q = TimetableEntry.query.join(Timeslot).filter(
-        TimetableEntry.faculty_id == faculty_id,
-        Timeslot.day_of_week == day,
+    q = (
+        TimetableEntry.query
+        .join(Timeslot, TimetableEntry.timeslot_id == Timeslot.id)
+        .filter(
+            TimetableEntry.faculty_id == faculty_id,
+            Timeslot.day_of_week == day,
+        )
     )
+
     if ts_id:
         q = q.filter(TimetableEntry.timeslot_id == ts_id)
 
     affected = q.all()
+
     if not affected:
         return 0
 
     changed = 0
 
     for entry in affected:
-        if try_assign_replacement_faculty(entry, unav):
+        # First try replacement faculty
+        if try_assign_replacement_faculty(entry):
             changed += 1
             continue
 
-        if try_move_to_other_timeslot(entry, unav):
+        # Then try moving the class
+        if try_move_to_other_timeslot(entry):
             changed += 1
             continue
 
-        # no solution -> cancel
+        # Finally, cancel if nothing works
         entry.status = "CANCELLED"
         db.session.add(entry)
         changed += 1
@@ -56,7 +59,7 @@ def apply_faculty_unavailability(unav: FacultyUnavailability) -> int:
     return changed
 
 
-def try_assign_replacement_faculty(entry: TimetableEntry, unav: FacultyUnavailability) -> bool:
+def try_assign_replacement_faculty(entry: TimetableEntry) -> bool:
     """
     Try to find another faculty who can teach the same subject
     and is free in the same timeslot.
@@ -64,7 +67,7 @@ def try_assign_replacement_faculty(entry: TimetableEntry, unav: FacultyUnavailab
     subject_id = entry.subject_id
     timeslot_id = entry.timeslot_id
 
-    # 1. All faculties that can teach this subject
+    # Faculties that can teach this subject (excluding current)
     teachable_faculty_ids = [
         fs.faculty_id
         for fs in FacultySubject.query.filter_by(subject_id=subject_id).all()
@@ -74,12 +77,11 @@ def try_assign_replacement_faculty(entry: TimetableEntry, unav: FacultyUnavailab
         return False
 
     for fid in teachable_faculty_ids:
-        # Check if that faculty already has a class in that timeslot
-        clash = (
-            TimetableEntry.query
-            .filter_by(faculty_id=fid, timeslot_id=timeslot_id)
-            .first()
-        )
+        # Clash check on same slot
+        clash = TimetableEntry.query.filter_by(
+            faculty_id=fid,
+            timeslot_id=timeslot_id,
+        ).first()
         if clash:
             continue
 
@@ -96,13 +98,10 @@ def try_assign_replacement_faculty(entry: TimetableEntry, unav: FacultyUnavailab
     return False
 
 
-def try_move_to_other_timeslot(entry: TimetableEntry, unav: FacultyUnavailability) -> bool:
+def try_move_to_other_timeslot(entry: TimetableEntry) -> bool:
     """
-    Try to move the class to some other timeslot where:
-    - same batch is free
-    - faculty is free
-    - room is free
-    - faculty is not unavailable on that slot
+    Try to move class to another slot on the same day
+    where faculty, batch and room are all free, and faculty is available.
     """
     from app.models import Timeslot  # avoid circular
 
@@ -110,10 +109,12 @@ def try_move_to_other_timeslot(entry: TimetableEntry, unav: FacultyUnavailabilit
     if not original_ts:
         return False
 
-    # For simple MVP: same day only
-    candidate_slots = Timeslot.query.filter_by(
-        day_of_week=original_ts.day_of_week
-    ).order_by(Timeslot.start_time).all()
+    candidate_slots = (
+        Timeslot.query
+        .filter_by(day_of_week=original_ts.day_of_week)
+        .order_by(Timeslot.start_time)
+        .all()
+    )
 
     for ts in candidate_slots:
         if ts.id == entry.timeslot_id:
@@ -143,7 +144,7 @@ def try_move_to_other_timeslot(entry: TimetableEntry, unav: FacultyUnavailabilit
         if is_faculty_unavailable(entry.faculty_id, ts.id):
             continue
 
-        # OK, move
+        # Move entry
         entry.timeslot_id = ts.id
         entry.status = "RESCHEDULED_MOVED"
         db.session.add(entry)
@@ -162,7 +163,7 @@ def is_faculty_unavailable(faculty_id: int, timeslot_id: int) -> bool:
     if not ts:
         return False
 
-    # full day unavailable
+    # Full-day unavailability
     full_day = FacultyUnavailability.query.filter_by(
         faculty_id=faculty_id,
         day_of_week=ts.day_of_week,
@@ -172,7 +173,7 @@ def is_faculty_unavailable(faculty_id: int, timeslot_id: int) -> bool:
     if full_day:
         return True
 
-    # slot-specific unavailability
+    # Slot-specific unavailability
     specific = FacultyUnavailability.query.filter_by(
         faculty_id=faculty_id,
         timeslot_id=timeslot_id,

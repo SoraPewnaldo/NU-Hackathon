@@ -16,6 +16,7 @@ from .models import (
     FacultyUnavailableSlot,
     FacultySubject,
     FacultyUnavailability, # Added this
+    Notification, # Added this
 )
 from . import db
 from .scheduler import generate_timetable
@@ -522,236 +523,89 @@ def hod_dashboard():
 @main.route("/faculty/dashboard")
 @login_required
 @roles_required("faculty", "hod", "admin")
-
-
 def faculty_dashboard():
-
-
     # 1) Find the Faculty row for this logged-in user
-
-
     faculty = Faculty.query.filter_by(user_id=current_user.id).first()
 
-
-
-
+    notifications = Notification.query.filter_by(
+        user_id=current_user.id,
+        is_read=False,
+    ).order_by(Notification.created_at.desc()).all()
 
     latest_tt = Timetable.query.order_by(Timetable.created_at.desc()).first()
 
-
-
-
-
     # If no faculty record or no timetable → show empty grid + message
-
-
     if not latest_tt or not faculty:
-
-
         if not faculty:
-
-
             flash("Your user is not linked to any Faculty record (user_id).", "warning")
-
-
         elif not latest_tt:
-
-
             flash("No timetable has been generated yet.", "warning")
 
-
-
-
-
         return render_template(
-
-
             "faculty_dashboard.html",
-
-
             user=current_user,
-
-
             days=[],
-
-
             periods=[],
-
-
             grid={},
-
-
+            notifications=notifications,
         )
-
-
-
-
 
     # 2) All timeslots
-
-
     all_slots = Timeslot.query.order_by(
-
-
         Timeslot.day_of_week,
-
-
         Timeslot.start_time
-
-
     ).all()
 
-
-
-
-
     # Unique periods (columns)
-
-
     periods = []
-
-
     for ts in all_slots:
-
-
         key = (ts.start_time, ts.end_time)
-
-
         if key not in periods:
-
-
             periods.append(key)
 
-
-
-
-
     # Day indices + labels (rows)
-
-
     days = [
-
-
         (0, "MON"),
-
-
         (1, "TUE"),
-
-
         (2, "WED"),
-
-
         (3, "THU"),
-
-
         (4, "FRI"),
-
-
         (5, "SAT"),
-
-
     ]
 
-
-
-
-
     # 3) Get all entries for THIS faculty in the latest timetable
-
-
     entries = (
-
-
         TimetableEntry.query
-
-
         .filter_by(timetable_id=latest_tt.id, faculty_id=faculty.id)
-
-
         .all()
-
-
     )
 
-
-
-
-
     # 4) Build grid: (day_index, period_index) -> entry
-
-
     grid = {}
-
-
     for e in entries:
-
-
         ts = e.timeslot
-
-
         key = (ts.start_time, ts.end_time)
-
-
         if key not in periods:
-
-
             continue
-
-
         p_idx = periods.index(key)
-
-
         d_idx = ts.day_of_week
-
-
         grid[(d_idx, p_idx)] = e
 
-
-
-
-
     # If entries is empty, we’ll show all "No Class" – which might be correct
-
-
     if not entries:
-
-
         flash(
-
-
             f"No classes assigned to you in timetable #{latest_tt.id}. "
-
-
             "Check FacultySubject mapping & scheduler.",
-
-
             "info",
-
-
         )
 
-
-
-
-
     return render_template(
-
-
         "faculty_dashboard.html",
-
-
         user=current_user,
-
-
         days=days,
-
-
         periods=periods,
-
-
         grid=grid,
-
-
+        notifications=notifications,
     )
 
 
@@ -1191,16 +1045,31 @@ def admin_leave_requests():
 @login_required
 @roles_required("admin", "hod")
 def approve_leave(req_id):
+    from app.rescheduling import apply_faculty_unavailability
+
     unav = FacultyUnavailability.query.get_or_404(req_id)
+
     if unav.status != "PENDING":
         flash("Request already processed.", "warning")
         return redirect(url_for("main.admin_leave_requests"))
 
+    # Mark as approved first
     unav.status = "APPROVED"
-    db.session.commit()
+    db.session.commit()  # commit so it's visible to rescheduler
 
-    # Trigger rescheduling
-    changed_count = apply_faculty_unavailability(unav)
+    # Now run rescheduler using ID (fresh DB state inside)
+    changed_count = apply_faculty_unavailability(unav.id)
+
+    # Notification to faculty's user account
+    if unav.faculty and unav.faculty.user_id:
+        msg = f"Your leave request (ID {unav.id}) was APPROVED. {changed_count} class(es) were rescheduled."
+        notif = Notification(
+            user_id=unav.faculty.user_id,
+            message=msg,
+        )
+        db.session.add(notif)
+        db.session.commit()
+
     flash(f"Leave approved. Rescheduled {changed_count} affected classes.", "success")
     return redirect(url_for("main.admin_leave_requests"))
 
@@ -1216,5 +1085,16 @@ def reject_leave(req_id):
 
     unav.status = "REJECTED"
     db.session.commit()
+
+    # Notification to faculty
+    if unav.faculty and unav.faculty.user_id:
+        msg = f"Your leave request (ID {unav.id}) was REJECTED."
+        notif = Notification(
+            user_id=unav.faculty.user_id,
+            message=msg,
+        )
+        db.session.add(notif)
+        db.session.commit()
+
     flash("Leave rejected.", "info")
     return redirect(url_for("main.admin_leave_requests"))

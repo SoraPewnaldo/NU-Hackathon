@@ -3,6 +3,19 @@
 
 {% block content %}
 
+{% if notifications %}
+<div class="notification-panel mb-4">
+  <h3>Notifications</h3>
+  <ul class="list-unstyled">
+    {% for n in notifications %}
+    <li>
+      {{ n.message }} <small>({{ n.created_at }})</small>
+    </li>
+    {% endfor %}
+  </ul>
+</div>
+{% endif %}
+
 <div class="section-header">
     <h2>Faculty Dashboard</h2>
     <span>Weekly schedule for {{ user.username }}</span>
