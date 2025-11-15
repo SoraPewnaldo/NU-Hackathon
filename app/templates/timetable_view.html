@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Timetable #{{ timetable.id }} · Intelligent Timetable{% endblock %}
+{% block content %}
+
+<div class="section-header">
+    <h2>Timetable: {{ timetable.name }}</h2>
+    <span class="text-muted-soft">ID {{ timetable.id }} · {{ timetable.created_at }}</span>
+</div>
+
+{% if not has_timetable %}
+    <div class="alert alert-warning">
+        No timetable data available for this timetable.
+    </div>
+{% else %}
+    {% include "_timetable_grid.html" with context %}
+{% endif %}
+
+{% endblock %}

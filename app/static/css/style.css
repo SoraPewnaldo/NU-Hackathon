@@ -1,0 +1,178 @@
+/* Global */
+body.app-body {
+    margin: 0;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background-color: #f4f5fb;
+    color: #111827;
+}
+
+.app-layout {
+    display: flex;
+    min-height: 100vh;
+}
+
+/* Sidebar */
+.app-sidebar {
+    width: 240px;
+    background-color: #ffffff;
+    border-right: 1px solid #e5e7eb;
+    display: flex;
+    flex-direction: column;
+    padding: 1rem 0.75rem;
+}
+
+.sidebar-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0 0.5rem 1rem 0.5rem;
+    border-bottom: 1px solid #e5e7eb;
+    margin-bottom: 0.75rem;
+}
+
+.sidebar-logo {
+    font-size: 1.4rem;
+}
+
+.sidebar-title {
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+.sidebar-nav {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    margin-top: 0.5rem;
+}
+
+.sidebar-link {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.55rem 0.65rem;
+    border-radius: 0.55rem;
+    font-size: 0.9rem;
+    color: #4b5563;
+    text-decoration: none;
+    margin-bottom: 0.15rem;
+}
+
+.sidebar-link .icon {
+    font-size: 1.05rem;
+}
+
+.sidebar-link:hover {
+    background-color: #eef2ff;
+    color: #1d4ed8;
+}
+
+.sidebar-link.active {
+    background-color: #e0ebff;
+    color: #1d4ed8;
+    font-weight: 500;
+}
+
+.sidebar-footer {
+    border-top: 1px solid #e5e7eb;
+    padding-top: 0.75rem;
+}
+
+.sidebar-user {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.avatar-circle {
+    width: 32px;
+    height: 32px;
+    border-radius: 999px;
+    background-color: #e5e7eb;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+/* Main area */
+.app-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Top bar */
+.app-topbar {
+    height: 64px;
+    background-color: #ffffff;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 1.5rem;
+}
+
+.topbar-title {
+    font-size: 1.15rem;
+    font-weight: 600;
+    margin: 0;
+}
+
+/* Content */
+.app-content {
+    padding: 1.5rem 1.5rem 2.5rem;
+}
+
+/* Cards / widgets */
+.card {
+    border: none;
+    border-radius: 14px;
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+}
+
+.metric-card-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #9ca3af;
+    margin-bottom: 0.25rem;
+}
+
+.metric-card-value {
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+.metric-card-sub {
+    font-size: 0.75rem;
+    color: #10b981;
+}
+
+/* Timetable grid */
+.timetable-grid {
+    display: grid;
+    grid-template-columns: 100px repeat(5, 1fr);
+    gap: 1px;
+    background-color: #d1d5db;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-top: 1rem;
+}
+
+.timetable-cell {
+    background-color: #f9fafb;
+    padding: 0.6rem 0.75rem;
+    font-size: 0.8rem;
+}
+
+.timetable-header {
+    background-color: #e5e7eb;
+    font-weight: 600;
+}
+
+.text-muted-soft {
+    color: #9ca3af;
+    font-size: 0.8rem;
+}

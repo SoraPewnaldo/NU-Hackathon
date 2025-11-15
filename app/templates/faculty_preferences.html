@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Preferences · Faculty{% endblock %}
+{% block content %}
+
+<div class="section-header">
+    <h2>Teaching Preferences</h2>
+    <span class="text-muted-soft">
+        {{ faculty.name }} – select slots you are <strong>NOT</strong> available to teach.
+    </span>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <p class="text-muted-soft mb-3">
+            Tick the time slots when you <strong>cannot</strong> take classes
+            (meetings, research, personal constraints, etc.).
+            The scheduler will try to avoid putting you in those slots.
+        </p>
+
+        <form method="POST">
+            <div class="timetable-grid">
+                <!-- Header row -->
+                <div class="timetable-cell timetable-header">Time</div>
+                <div class="timetable-cell timetable-header">Day</div>
+                <div class="timetable-cell timetable-header">Unavailable?</div>
+
+                {% for slot in timeslots %}
+                    <div class="timetable-cell timetable-header">
+                        {{ slot.start_time.strftime("%H:%M") }}–{{ slot.end_time.strftime("%H:%M") }}
+                    </div>
+                    <div class="timetable-cell">
+                        {{ day_names[slot.day_of_week] }}
+                    </div>
+                    <div class="timetable-cell">
+                        <div class="form-check">
+                            <input class="form-check-input"
+                                   type="checkbox"
+                                   name="unavailable_slots"
+                                   value="{{ slot.id }}"
+                                   id="slot_{{ slot.id }}"
+                                   {% if slot.id in unavailable_ids %}checked{% endif %}>
+                            <label class="form-check-label text-muted-soft" for="slot_{{ slot.id }}">
+                                I am not available
+                            </label>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+
+            <button type="submit" class="btn btn-primary mt-3">
+                Save Preferences
+            </button>
+        </form>
+    </div>
+</div>
+
+{% endblock %}

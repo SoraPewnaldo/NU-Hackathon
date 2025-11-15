@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Faculty · Intelligent Timetable{% endblock %}
+{% block content %}
+
+<div class="section-header">
+    <h2>Faculty Dashboard</h2>
+    <span>Weekly schedule for {{ faculty.name if faculty else user.username }}</span>
+</div>
+
+{% if not has_timetable %}
+    <div class="alert alert-warning">
+        No timetable generated yet. Ask admin to run the scheduler.
+    </div>
+{% else %}
+    {% include "_timetable_grid.html" with context %}
+{% endif %}
+
+{% endblock %}
