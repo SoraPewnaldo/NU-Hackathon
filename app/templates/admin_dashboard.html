@@ -1,20 +1,54 @@
 {% extends "base.html" %}
+{% block title %}Admin · Intelligent Timetable{% endblock %}
 {% block content %}
-<h2>Admin Dashboard</h2>
+
+<h2 class="mb-3">Admin Dashboard</h2>
 <p>Welcome, {{ user.username }} (Admin)</p>
 
-<div class="row">
+<div class="row g-4">
     <div class="col-md-6">
         <div class="card mb-3">
             <div class="card-body">
-                <h5 class="card-title">Global Controls</h5>
-                <ul>
-                    <li>Manage departments, rooms, batches, faculties</li>
-                    <li>Trigger timetable generation for all departments</li>
-                    <li>View system-wide clash reports & utilization</li>
-                </ul>
+                <h5 class="card-title">Generate Timetable</h5>
+                <p class="text-muted-soft">
+                    Runs the OR-Tools scheduler using current rooms, batches, subjects, faculties and timeslots.
+                </p>
+                <form method="POST" action="{{ url_for('main.admin_generate_timetable') }}">
+                    <button type="submit" class="btn btn-primary">
+                        Generate New Timetable
+                    </button>
+                </form>
+                <p class="text-muted-soft mt-2 mb-0">
+                    Each run creates a new timetable record. Later you can list/select them.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card mb-3">
+            <div class="card-body">
+                <h5 class="card-title">Latest Timetable</h5>
+
+                {% if latest_tt %}
+                    <p class="mb-1">
+                        <strong>Name:</strong> {{ latest_tt.name }}<br>
+                        <strong>ID:</strong> {{ latest_tt.id }}<br>
+                        <strong>Created at:</strong> {{ latest_tt.created_at }}<br>
+                        <strong>Entries:</strong> {{ latest_tt.entries.count() }}
+                    </p>
+                    <a href="{{ url_for('main.view_timetable', timetable_id=latest_tt.id) }}"
+                       class="btn btn-sm btn-outline-secondary mt-2">
+                        View Timetable
+                    </a>
+                {% else %}
+                    <p class="text-muted-soft mb-0">
+                        No timetable generated yet. Click "Generate New Timetable" to create one.
+                    </p>
+                {% endif %}
             </div>
         </div>
     </div>
 </div>
+
 {% endblock %}
