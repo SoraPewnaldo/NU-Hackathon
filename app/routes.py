@@ -19,7 +19,7 @@ from .models import (
     Notification, # Added this
 )
 from . import db
-from .scheduler import generate_timetable
+from .scheduler import generate_timetable_for_institution
 from .rescheduling import apply_faculty_unavailability # Added this
 
 def build_clash_report(timetable_id):
@@ -379,39 +379,37 @@ def admin_add_test_student():
 @login_required
 @roles_required("admin")
 def admin_manage_faculty():
-    # Handle simple "Add Faculty" in same page
+    if not current_user.institution_id:
+        flash("You are not associated with any institution.", "danger")
+        return redirect(url_for("main.admin_dashboard"))
+
+    inst_id = current_user.institution_id
+
     if request.method == "POST":
         name = request.form.get("name", "").strip()
-        code = request.form.get("code", "").strip()
-        max_load = request.form.get("max_load_per_week", "").strip()
-        user_id = request.form.get("user_id")  # optional link to User
+        email = request.form.get("email", "").strip()
+        user_id = request.form.get("user_id")
 
-        if not name or not code:
-            flash("Name and code are required.", "danger")
+        if not name or not email:
+            flash("Name and email are required.", "danger")
         else:
-            # Basic uniqueness check for code
-            existing = Faculty.query.filter_by(code=code).first()
+            existing = Faculty.query.filter_by(email=email, institution_id=inst_id).first()
             if existing:
-                flash("Faculty code already exists.", "danger")
+                flash("Faculty with this email already exists in your institution.", "danger")
             else:
-                try:
-                    max_load_val = int(max_load) if max_load else 16
-                except ValueError:
-                    max_load_val = 16
-
                 faculty = Faculty(
                     name=name,
-                    code=code,
-                    max_load_per_week=max_load_val,
+                    email=email,
                     user_id=int(user_id) if user_id else None,
+                    institution_id=inst_id,
                 )
                 db.session.add(faculty)
                 db.session.commit()
                 flash("Faculty added successfully.", "success")
                 return redirect(url_for("main.admin_manage_faculty"))
 
-    faculties = Faculty.query.order_by(Faculty.code).all()
-    users = User.query.order_by(User.username).all()
+    faculties = Faculty.query.filter_by(institution_id=inst_id).order_by(Faculty.name).all()
+    users = User.query.filter_by(institution_id=inst_id).order_by(User.username).all()
 
     return render_template(
         "admin_manage_faculty.html",
@@ -426,33 +424,33 @@ def admin_manage_faculty():
 @roles_required("admin")
 def admin_edit_faculty(faculty_id):
     faculty = Faculty.query.get_or_404(faculty_id)
-    users = User.query.order_by(User.username).all()
+    if faculty.institution_id != current_user.institution_id:
+        abort(403)
+
+    users = User.query.filter_by(institution_id=current_user.institution_id).order_by(User.username).all()
+    subjects = Subject.query.filter_by(institution_id=current_user.institution_id).order_by(Subject.name).all()
+    
+    assigned_subject_ids = {fs.subject_id for fs in faculty.subject_links}
 
     if request.method == "POST":
         name = request.form.get("name", "").strip()
-        code = request.form.get("code", "").strip()
-        max_load = request.form.get("max_load_per_week", "").strip()
+        email = request.form.get("email", "").strip()
         user_id = request.form.get("user_id")
 
-        if not name or not code:
-            flash("Name and code are required.", "danger")
+        if not name or not email:
+            flash("Name and email are required.", "danger")
         else:
-            # Check code uniqueness for others
             existing = Faculty.query.filter(
-                Faculty.code == code,
+                Faculty.email == email,
+                Faculty.institution_id == current_user.institution_id,
                 Faculty.id != faculty.id
             ).first()
             if existing:
-                flash("Another faculty already uses this code.", "danger")
+                flash("Another faculty already uses this email.", "danger")
             else:
                 faculty.name = name
-                faculty.code = code
-                try:
-                    faculty.max_load_per_week = int(max_load) if max_load else 16
-                except ValueError:
-                    pass
+                faculty.email = email
                 faculty.user_id = int(user_id) if user_id else None
-
                 db.session.commit()
                 flash("Faculty updated.", "success")
                 return redirect(url_for("main.admin_manage_faculty"))
@@ -462,7 +460,31 @@ def admin_edit_faculty(faculty_id):
         user=current_user,
         faculty=faculty,
         users=users,
+        subjects=subjects,
+        assigned_subject_ids=assigned_subject_ids
     )
+
+@main.route("/admin/faculty/<int:faculty_id>/subjects", methods=["POST"])
+@login_required
+@roles_required("admin")
+def admin_edit_faculty_subjects(faculty_id):
+    faculty = Faculty.query.get_or_404(faculty_id)
+    if faculty.institution_id != current_user.institution_id:
+        abort(403)
+
+    assigned_ids = request.form.getlist("subject_ids", type=int)
+    
+    # Clear existing
+    FacultySubject.query.filter_by(faculty_id=faculty.id).delete()
+
+    # Add new
+    for sub_id in assigned_ids:
+        fs = FacultySubject(faculty_id=faculty.id, subject_id=sub_id)
+        db.session.add(fs)
+    
+    db.session.commit()
+    flash("Faculty subject assignments updated.", "success")
+    return redirect(url_for('main.admin_edit_faculty', faculty_id=faculty.id))
 
 
 @main.route("/admin/faculty/<int:faculty_id>/delete", methods=["POST"])
@@ -470,19 +492,53 @@ def admin_edit_faculty(faculty_id):
 @roles_required("admin")
 def admin_delete_faculty(faculty_id):
     faculty = Faculty.query.get_or_404(faculty_id)
+    if faculty.institution_id != current_user.institution_id:
+        abort(403)
 
-    # TODO: in the future check if faculty has timetable entries etc.
+    # Also delete subject mappings
+    FacultySubject.query.filter_by(faculty_id=faculty.id).delete()
+    
     db.session.delete(faculty)
     db.session.commit()
     flash("Faculty deleted.", "info")
     return redirect(url_for("main.admin_manage_faculty"))
 
 
-@main.route("/admin/batches")
+@main.route("/admin/batches", methods=["GET", "POST"])
 @login_required
+@roles_required("admin")
 def admin_batches():
-    # You can filter by department / role later
-    batches = Batch.query.order_by(Batch.year.asc(), Batch.name.asc()).all()
+    if not current_user.institution_id:
+        flash("You are not associated with any institution.", "danger")
+        return redirect(url_for("main.admin_dashboard"))
+
+    inst_id = current_user.institution_id
+
+    if request.method == "POST":
+        name = request.form.get("name")
+        program = request.form.get("program")
+        year = request.form.get("year", type=int)
+        section = request.form.get("section")
+        size = request.form.get("size", type=int)
+
+        if not name or not program or not year or not size:
+            flash("Name, program, year, and size are required.", "danger")
+            return redirect(url_for("main.admin_batches"))
+
+        batch = Batch(
+            name=name,
+            program=program,
+            year=year,
+            section=section or None,
+            size=size,
+            institution_id=inst_id
+        )
+        db.session.add(batch)
+        db.session.commit()
+        flash("Batch added successfully.", "success")
+        return redirect(url_for("main.admin_batches"))
+
+    batches = Batch.query.filter_by(institution_id=inst_id).order_by(Batch.year.asc(), Batch.name.asc()).all()
     return render_template("admin_batches.html", batches=batches)
 
 
@@ -493,12 +549,22 @@ def admin_add_batch():
     program = request.form.get("program")
     year = request.form.get("year", type=int)
     section = request.form.get("section")
+    size = request.form.get("size", type=int)
+    inst_id = current_user.institution_id
 
-    if not name or not program or not year:
-        flash("Name, program, and year are required.", "danger")
+
+    if not name or not program or not year or not size:
+        flash("Name, program, year, and size are required.", "danger")
         return redirect(url_for("main.admin_batches"))
 
-    batch = Batch(name=name, program=program, year=year, section=section or None)
+    batch = Batch(
+        name=name,
+        program=program,
+        year=year,
+        section=section or None,
+        size=size,
+        institution_id=inst_id
+    )
     db.session.add(batch)
     db.session.commit()
     flash("Batch added successfully.", "success")
@@ -699,26 +765,24 @@ def student_dashboard():
         grid=grid,
     )
 
-@main.route("/admin/generate_timetable", methods=["GET"])
+@main.route("/admin/generate_timetable", methods=["GET", "POST"])
 @login_required
 @roles_required("admin")
 def admin_generate_timetable():
-    # 1. Deactivate old timetables
-    Timetable.query.update({Timetable.is_active: False})
-    db.session.commit()
+    if current_user.role != "admin":
+        abort(403)
 
-    # 2. Create a new one and mark active
-    new_tt = Timetable(name=f"Timetable Generated on {datetime.now().strftime('%Y-%m-%d %H:%M')}", is_active=True)
-    db.session.add(new_tt)
-    db.session.commit()
+    inst_id = current_user.institution_id
+    if not inst_id:
+        flash("No institution associated with current user.", "danger")
+        return redirect(url_for("main.admin_dashboard"))
 
-    # 3. Generate entries using new_tt.id
-    tt = generate_timetable(new_tt.name, new_tt.id) # Pass new_tt.id to generate_timetable
-
-    if tt is None:
-        flash("Failed to generate timetable. Check data and constraints.", "danger")
-    else:
-        flash(f"Timetable #{tt.id} generated with {tt.entries.count()} entries and set as active.", "success")
+    try:
+        created = generate_timetable_for_institution(inst_id)
+        flash(f"Timetable generated successfully with {created} entries.", "success")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Error generating timetable: {e}", "danger")
 
     return redirect(url_for("main.admin_dashboard"))
 
@@ -1104,6 +1168,106 @@ def approve_leave(req_id):
 
     flash(f"Leave approved. Rescheduled {changed_count} affected classes.", "success")
     return redirect(url_for("main.admin_leave_requests"))
+
+
+@main.route("/admin/rooms", methods=["GET", "POST"])
+@login_required
+@roles_required("admin")
+def manage_rooms():
+    if not current_user.institution_id:
+        flash("You are not associated with any institution.", "danger")
+        return redirect(url_for("main.admin_dashboard"))
+
+    inst_id = current_user.institution_id
+
+    if request.method == "POST":
+        name = request.form["name"].strip()
+        capacity = int(request.form["capacity"])
+        room_type = request.form["room_type"].strip()
+
+        room = Room(
+            institution_id=inst_id,
+            name=name,
+            capacity=capacity,
+            room_type=room_type,
+        )
+        db.session.add(room)
+        db.session.commit()
+        flash("Room added.", "success")
+        return redirect(url_for("main.manage_rooms"))
+
+    rooms = Room.query.filter_by(institution_id=inst_id).all()
+    return render_template("admin_rooms.html", rooms=rooms)
+
+
+@main.route("/admin/subjects", methods=["GET", "POST"])
+@login_required
+@roles_required("admin")
+def admin_subjects():
+    if not current_user.institution_id:
+        flash("You are not associated with any institution.", "danger")
+        return redirect(url_for("main.admin_dashboard"))
+
+    inst_id = current_user.institution_id
+
+    if request.method == "POST":
+        name = request.form.get("name")
+        code = request.form.get("code")
+        semester = request.form.get("semester", type=int)
+        classes_per_week = request.form.get("classes_per_week", type=int)
+        max_classes_per_day = request.form.get("max_classes_per_day", type=int)
+        is_lab = "is_lab" in request.form
+
+        if not name or not code or not semester or not classes_per_week or not max_classes_per_day:
+            flash("All fields are required.", "danger")
+            return redirect(url_for("main.admin_subjects"))
+
+        subject = Subject(
+            name=name,
+            code=code,
+            semester=semester,
+            classes_per_week=classes_per_week,
+            max_classes_per_day=max_classes_per_day,
+            is_lab=is_lab,
+            institution_id=inst_id
+        )
+        db.session.add(subject)
+        db.session.commit()
+        flash("Subject added successfully.", "success")
+        return redirect(url_for("main.admin_subjects"))
+
+    subjects = Subject.query.filter_by(institution_id=inst_id).order_by(Subject.semester.asc(), Subject.code.asc()).all()
+    return render_template("admin_subjects.html", subjects=subjects)
+
+
+@main.route("/admin/timeslots", methods=["GET", "POST"])
+@login_required
+@roles_required("admin")
+def admin_timeslots():
+    if request.method == "POST":
+        day_of_week = request.form.get("day_of_week", type=int)
+        start_time_str = request.form.get("start_time")
+        end_time_str = request.form.get("end_time")
+
+        if day_of_week is None or not start_time_str or not end_time_str:
+            flash("All fields are required.", "danger")
+            return redirect(url_for("main.admin_timeslots"))
+
+        start_time = datetime.strptime(start_time_str, "%H:%M").time()
+        end_time = datetime.strptime(end_time_str, "%H:%M").time()
+
+        timeslot = Timeslot(
+            day_of_week=day_of_week,
+            start_time=start_time,
+            end_time=end_time,
+        )
+        db.session.add(timeslot)
+        db.session.commit()
+        flash("Timeslot added successfully.", "success")
+        return redirect(url_for("main.admin_timeslots"))
+
+    timeslots = Timeslot.query.order_by(Timeslot.day_of_week, Timeslot.start_time).all()
+    return render_template("admin_timeslots.html", timeslots=timeslots)
 
 
 @main.route("/admin/leave_requests/<int:req_id>/reject", methods=["POST"])

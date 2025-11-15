@@ -1,290 +1,232 @@
-from ortools.sat.python import cp_model
-from flask import current_app
-from datetime import time
-from .models import (
+# app/scheduler.py
+
+from app import db
+from app.models import (
+    Institution,
     Room,
     Batch,
     Subject,
     Faculty,
+    FacultySubject,
     Timeslot,
     Timetable,
     TimetableEntry,
-    FacultySubject,
-    FacultyUnavailableSlot,
 )
-from . import db
+
+from ortools.sat.python import cp_model
 
 
-def generate_timetable(name: str = "Auto Generated Timetable", existing_timetable_id: int = None):
+def generate_timetable_for_institution(institution_id: int) -> int:
     """
-    Build and solve a basic timetable using OR-Tools CP-SAT.
-    Returns the created Timetable instance or None if no solution.
-    If existing_timetable_id is provided, it will update that timetable.
+    Generic timetable generator using current DB data
+    for a given institution.
+
+    Returns: number of TimetableEntry rows created.
     """
 
-    # We need an app context to talk to the DB when called from scripts/other code
-    with current_app.app_context():
-        rooms = Room.query.all()
-        batches = Batch.query.all()
-        subjects = Subject.query.all()
-        timeslots = Timeslot.query.order_by(
-            Timeslot.day_of_week, Timeslot.start_time
-        ).all()
+    inst = Institution.query.get(institution_id)
+    if not inst:
+        raise ValueError(f"Institution {institution_id} not found")
 
-        # Load unavailability: faculty_id -> set(timeslot_id)
-        unavailable_map = {}
-        all_unavail = FacultyUnavailableSlot.query.all()
-        for ua in all_unavail:
-            unavailable_map.setdefault(ua.faculty_id, set()).add(ua.timeslot_id)
+    # 1) Fetch data for this institution
+    rooms = Room.query.filter_by(institution_id=institution_id).all()
+    batches = Batch.query.filter_by(institution_id=institution_id).all()
+    subjects = Subject.query.filter_by(institution_id=institution_id).all()
+    faculties = Faculty.query.filter_by(institution_id=institution_id).all()
+    timeslots = Timeslot.query.order_by(
+        Timeslot.day_of_week, Timeslot.start_time
+    ).all()
 
-        if not rooms or not batches or not subjects or not timeslots:
-            print("❌ Not enough data to generate timetable.")
-            return None
+    print(f"Rooms: {len(rooms)}")
+    print(f"Batches: {len(batches)}")
+    print(f"Subjects: {len(subjects)}")
+    print(f"Faculties: {len(faculties)}")
+    print(f"Timeslots: {len(timeslots)}")
 
-        # --------------------------------------------------
-        # 1) Build class instances (what we need to schedule)
-        # --------------------------------------------------
-        # Each class instance = one weekly session:
-        # (batch, subject, faculty, is_lab)
-        class_instances = []
+    if not rooms or not batches or not subjects or not faculties or not timeslots:
+        # You can throw or return 0, but better to crash visibly in dev
+        raise RuntimeError("Not enough data to generate timetable "
+                           "(need rooms, batches, subjects, faculty, timeslots).")
 
-        for batch in batches:
-            for subject in subjects:
-                # simple rule: subject is only for a matching semester for the batch year
-                if subject.semester not in [batch.year * 2 - 1, batch.year * 2]:
-                    continue
+    # Map subject_id -> list of faculty_ids that can teach it
+    subject_faculty_map = {}
+    fs_links = (
+        FacultySubject.query
+        .join(Faculty, FacultySubject.faculty_id == Faculty.id)
+        .filter(Faculty.institution_id == institution_id)
+        .all()
+    )
+    for fs in fs_links:
+        subject_faculty_map.setdefault(fs.subject_id, []).append(fs.faculty_id)
 
-                # Which faculties can teach this subject?
-                fs_mappings = FacultySubject.query.filter_by(
-                    subject_id=subject.id
-                ).all()
-                if not fs_mappings:
-                    print(
-                        f"⚠️ No faculty mapping for subject {subject.code}, skipping."
+    # 2) Build "class requirements"
+    # For now: for each Batch, all Subjects (you can refine by programme/semester)
+    class_reqs = []  # list of dicts with ids
+    for batch in batches:
+        # TODO: filter subjects per batch using your own logic
+        batch_subjects = subjects
+
+        for subj in batch_subjects:
+            # Use classes_per_week defined by admin
+            cpw = subj.classes_per_week or 0
+            for _ in range(cpw):
+                class_reqs.append(
+                    {
+                        "batch_id": batch.id,
+                        "subject_id": subj.id,
+                    }
+                )
+
+    if not class_reqs:
+        raise RuntimeError("No class requirements (classes_per_week likely 0).")
+
+    # 3) Setup OR-Tools CP-SAT model
+    model = cp_model.CpModel()
+
+    # Index maps for easier variable naming
+    room_ids = [r.id for r in rooms]
+    timeslot_ids = [t.id for t in timeslots]
+    faculty_ids = [f.id for f in faculties]
+
+    # Decision variables:
+    # For each class requirement i and each (timeslot, room, faculty), 0/1 var
+    x = {}  # (i, ts_id, room_id, faculty_id) -> BoolVar
+
+    for i, c in enumerate(class_reqs):
+        subj_id = c["subject_id"]
+        possible_faculties = subject_faculty_map.get(subj_id, [])
+        if not possible_faculties:
+            # no faculty can teach this subject: skip / or raise
+            continue
+
+        for ts in timeslot_ids:
+            for room in room_ids:
+                for f_id in possible_faculties:
+                    x[(i, ts, room, f_id)] = model.NewBoolVar(
+                        f"x_c{i}_ts{ts}_r{room}_f{f_id}"
                     )
-                    continue
 
-                # For hackathon simplicity, pick first mapped faculty
-                faculty = fs_mappings[0].faculty
-
-                # classes_per_week tells us how many sessions this subject needs
-                for _ in range(subject.classes_per_week):
-                    class_instances.append(
-                        {
-                            "batch_id": batch.id,
-                            "subject_id": subject.id,
-                            "faculty_id": faculty.id,
-                            "is_lab": subject.is_lab,
-                        }
-                    )
-
-        if not class_instances:
-            print("❌ No class instances built. Check seed data.")
-            return None
-
-        num_classes = len(class_instances)
-        num_rooms = len(rooms)
-        num_slots = len(timeslots)
-
-        print(f"📊 Building model for {num_classes} class instances ...")
-
-        # --------------------------------------------------
-        # 2) Define CP-SAT model and decision variables
-        # --------------------------------------------------
-        model = cp_model.CpModel()
-
-        # x[c, r, s] = 1 if class c happens in room r at timeslot s
-        x = {}
-        for c in range(num_classes):
-            is_lab = class_instances[c]["is_lab"]
-            faculty_id = class_instances[c]["faculty_id"]
-
-            # timeslots this faculty is unavailable
-            fac_unavail = unavailable_map.get(faculty_id, set())
-
-            for r in range(num_rooms):
-                # Lab subjects must be in lab rooms
-                if is_lab and rooms[r].room_type != "lab":
-                    continue
-                # Optional: non-lab subjects don't use labs
-                if not is_lab and rooms[r].room_type == "lab":
-                    continue
-
-                for s in range(num_slots):
-                    ts_id = timeslots[s].id
-
-                    # If this faculty marked this timeslot as unavailable, skip it
-                    if ts_id in fac_unavail:
-                        continue
-
-                    x[(c, r, s)] = model.NewBoolVar(f"x_c{c}_r{r}_s{s}")
-
-        # --------------------------------------------------
-        # 3) Constraints
-        # --------------------------------------------------
-
-        # (a) Each class must be scheduled exactly once
-        for c in range(num_classes):
-            relevant_vars = [
-                x[(c, r, s)]
-                for r in range(num_rooms)
-                for s in range(num_slots)
-                if (c, r, s) in x
-            ]
-            if not relevant_vars:
-                print(f"❌ Class {c} has no valid (room, slot) combinations.")
-                return None
-            model.Add(sum(relevant_vars) == 1)
-
-        # (b) Room clash: at most one class per room per timeslot
-        for r in range(num_rooms):
-            for s in range(num_slots):
-                vars_in_room_slot = [
-                    x[(c, r, s)]
-                    for c in range(num_classes)
-                    if (c, r, s) in x
-                ]
-                if vars_in_room_slot:
-                    model.Add(sum(vars_in_room_slot) <= 1)
-
-        # (c) Faculty clash: a faculty can't be in two places at same time
-        all_faculties = Faculty.query.all()
-        for s in range(num_slots):
-            for faculty in all_faculties:
-                vars_for_faculty = []
-                for c in range(num_classes):
-                    if class_instances[c]["faculty_id"] != faculty.id:
-                        continue
-                    for r in range(num_rooms):
-                        if (c, r, s) in x:
-                            vars_for_faculty.append(x[(c, r, s)])
-                if vars_for_faculty:
-                    model.Add(sum(vars_for_faculty) <= 1)
-
-        # (d) Batch clash: a batch can't attend two classes at same time
-        for s in range(num_slots):
-            for batch in batches:
-                vars_for_batch = []
-                for c in range(num_classes):
-                    if class_instances[c]["batch_id"] != batch.id:
-                        continue
-                    for r in range(num_rooms):
-                        if (c, r, s) in x:
-                            vars_for_batch.append(x[(c, r, s)])
-                if vars_for_batch:
-                    model.Add(sum(vars_for_batch) <= 1)
-
-        # -------------------------
-        # LUNCH BREAK CONSTRAINTS
-        # -------------------------
-        # For each batch, for each day: lunch break is either 12:30–13:30 OR 13:30–14:30.
-        # The solver decides which one (no user/batch choice).
-        lunch1_start = time(12, 30)
-        lunch2_start = time(13, 30)
-
-        for batch in batches:
-            for day in range(0, 5):  # Mon–Fri
-                slot_l1 = None
-                slot_l2 = None
-
-                # Find slot indexes for the two lunch slots for this day
-                for s, ts in enumerate(timeslots):
-                    if ts.day_of_week != day:
-                        continue
-                    if ts.start_time == lunch1_start:
-                        slot_l1 = s
-                    if ts.start_time == lunch2_start:
-                        slot_l2 = s
-
-                # If that day doesn't have both lunch slots, skip
-                if slot_l1 is None or slot_l2 is None:
-                    continue
-
-                # Binary decision: which slot is the BREAK
-                # z = 0 -> second slot (13:30–14:30) is break (no class there)
-                # z = 1 -> first slot (12:30–13:30) is break
-                z = model.NewBoolVar(f"lunch_choice_b{batch.id}_d{day}")
-
-                vars_l1 = []
-                vars_l2 = []
-
-                for c in range(num_classes):
-                    if class_instances[c]["batch_id"] != batch.id:
-                        continue
-                    for r in range(num_rooms):
-                        if (c, r, slot_l1) in x:
-                            vars_l1.append(x[(c, r, slot_l1)])
-                        if (c, r, slot_l2) in x:
-                            vars_l2.append(x[(c, r, slot_l2)])
-
-                # Because batch clash is already enforced, sum(...) <= 1 anyway.
-                # Here we force ONE of the two slots to be empty for this batch.
-                if vars_l1:
-                    model.Add(sum(vars_l1) <= 1 - z)
-                if vars_l2:
-                    model.Add(sum(vars_l2) <= z)
-
-        # --------------------------------------------------
-        # 4) Solve (we only care about "any" feasible solution)
-        # --------------------------------------------------
-        solver = cp_model.CpSolver()
-        solver.parameters.max_time_in_seconds = 10.0  # safety limit
-
-        result_status = solver.Solve(model)
-
-        if result_status not in (cp_model.OPTIMAL, cp_model.FEASIBLE):
-            print("❌ No feasible timetable found.")
-            return None
-
-        print("✅ Timetable solution found. Saving to database...")
-
-        # --------------------------------------------------
-        # 5) Save solution as Timetable + TimetableEntry rows
-        # --------------------------------------------------
-        if existing_timetable_id:
-            timetable = Timetable.query.get(existing_timetable_id)
-            if not timetable:
-                print(f"❌ Existing timetable with ID {existing_timetable_id} not found.")
-                return None
-            # Clear existing entries if updating an existing timetable
-            TimetableEntry.query.filter_by(timetable_id=existing_timetable_id).delete()
-        else:
-            timetable = Timetable(name=name, is_active=True)
-            db.session.add(timetable)
-        db.session.commit()  # now timetable.id is available
-
-        for c in range(num_classes):
-            ci = class_instances[c]
-            chosen_room_id = None
-            chosen_slot_id = None
-
-            for r in range(num_rooms):
-                for s in range(num_slots):
-                    if (c, r, s) in x and solver.Value(x[(c, r, s)]) == 1:
-                        chosen_room_id = rooms[r].id
-                        chosen_slot_id = timeslots[s].id
-                        break
-                if chosen_room_id is not None:
-                    break
-
-            if chosen_room_id is None or chosen_slot_id is None:
-                print(f"⚠️ Class {c} has no chosen room/slot in solution, skipping.")
-                continue
-
-            entry = TimetableEntry(
-                timetable_id=timetable.id,
-                batch_id=ci["batch_id"],
-                subject_id=ci["subject_id"],
-                faculty_id=ci["faculty_id"],
-                room_id=chosen_room_id,
-                timeslot_id=chosen_slot_id,
-            )
-            db.session.add(entry)
-
-        db.session.commit()
-        print(
-            f"✅ Timetable saved with id={timetable.id} and "
-            f"{timetable.entries.count()} entries."
+        # each class must be assigned exactly once (one slot, one room, one faculty)
+        model.Add(
+            sum(
+                x[(i, ts, room, f_id)]
+                for ts in timeslot_ids
+                for room in room_ids
+                for f_id in possible_faculties
+            ) == 1
         )
 
-        return timetable
+    # 4) No faculty clashes, no room clashes, no batch clashes
+    # We need a quick way to know which class_reqs belong to same batch, etc.
+    # Precompute:
+    class_batch_ids = [c["batch_id"] for c in class_reqs]
+    class_subject_ids = [c["subject_id"] for c in class_reqs]
+
+    # Faculty clashes:
+    for f_id in faculty_ids:
+        for ts in timeslot_ids:
+            model.Add(
+                sum(
+                    x[(i, ts, room, f_id)]
+                    for i, c in enumerate(class_reqs)
+                    for room in room_ids
+                    if (i, ts, room, f_id) in x
+                ) <= 1
+            )
+
+    # Room clashes:
+    for room in room_ids:
+        for ts in timeslot_ids:
+            model.Add(
+                sum(
+                    x[(i, ts, room, f_id)]
+                    for i, c in enumerate(class_reqs)
+                    for f_id in faculty_ids
+                    if (i, ts, room, f_id) in x
+                ) <= 1
+            )
+
+    # Batch clashes:
+    for batch in batches:
+        for ts in timeslot_ids:
+            model.Add(
+                sum(
+                    x[(i, ts, room, f_id)]
+                    for i, c in enumerate(class_reqs)
+                    if c["batch_id"] == batch.id
+                    for room in room_ids
+                    for f_id in faculty_ids
+                    if (i, ts, room, f_id) in x
+                ) <= 1
+            )
+
+    # (OPTIONAL) Example: soften faculty load / spread classes etc. with objective later.
+    model.Maximize(0)  # no specific objective for now, just any feasible solution.
+
+    # 5) Solve
+    solver = cp_model.CpSolver()
+    solver_status = solver.Solve(model)
+
+    if solver_status not in (cp_model.OPTIMAL, cp_model.FEASIBLE):
+        raise RuntimeError("No feasible timetable solution found.")
+
+    # 6) Get or create active timetable
+    timetable = (
+        Timetable.query
+        .filter_by(institution_id=institution_id, is_active=True)
+        .order_by(Timetable.created_at.desc())
+        .first()
+    )
+    if not timetable:
+        timetable = Timetable(
+            institution_id=institution_id,
+            name=f"{inst.name} Timetable",
+            is_active=True,
+        )
+        db.session.add(timetable)
+        db.session.commit()
+
+    # Clear old entries for this active timetable
+    TimetableEntry.query.filter_by(timetable_id=timetable.id).delete()
+    db.session.commit()
+
+    # 7) Store new entries in DB
+    created = 0
+    for i, c in enumerate(class_reqs):
+        batch_id = c["batch_id"]
+        subj_id = c["subject_id"]
+
+        # Find assignment chosen by solver
+        assigned = None
+        for ts in timeslot_ids:
+            for room in room_ids:
+                for f_id in faculty_ids:
+                    key = (i, ts, room, f_id)
+                    if key in x and solver.Value(x[key]) == 1:
+                        assigned = (ts, room, f_id)
+                        break
+                if assigned:
+                    break
+            if assigned:
+                break
+
+        if not assigned:
+            # This should not happen if constraints are correct, but be safe.
+            continue
+
+        ts_id, room_id, faculty_id = assigned
+
+        entry = TimetableEntry(
+            timetable_id=timetable.id,
+            batch_id=batch_id,
+            subject_id=subj_id,
+            faculty_id=faculty_id,
+            room_id=room_id,
+            timeslot_id=ts_id,
+            status="NORMAL",
+        )
+        db.session.add(entry)
+        created += 1
+
+    db.session.commit()
+    return created

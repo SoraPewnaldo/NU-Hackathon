@@ -7,6 +7,11 @@ from datetime import datetime
 def load_user(user_id):
     return User.query.get(int(user_id))
 
+class Institution(db.Model):
+    __tablename__ = "institution"
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(150), nullable=False, unique=True)
 
 # --------------------
 # USER & AUTH
@@ -29,6 +34,9 @@ class User(UserMixin, db.Model):
     role = db.Column(db.String(20), default=ROLE_FACULTY, nullable=False)
     batch_id = db.Column(db.Integer, db.ForeignKey("batch.id"), nullable=True)
     batch = db.relationship("Batch", backref="students")
+    institution_id = db.Column(db.Integer, db.ForeignKey("institution.id"), nullable=True)
+    institution = db.relationship("Institution", backref="users")
+
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -60,9 +68,12 @@ class Room(db.Model):
     __tablename__ = "room"
 
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(64), unique=True, nullable=False)  # e.g. C-301
+    name = db.Column(db.String(64), nullable=False)  # e.g. C-301
     capacity = db.Column(db.Integer, nullable=False)
     room_type = db.Column(db.String(32), default="classroom")  # classroom/lab/seminar
+    institution_id = db.Column(db.Integer, db.ForeignKey("institution.id"), nullable=False)
+    institution = db.relationship("Institution", backref="rooms")
+
 
     def __repr__(self):
         return f"<Room {self.name} cap={self.capacity}>"
@@ -77,6 +88,10 @@ class Batch(db.Model):
     year = db.Column(db.Integer, nullable=False)             # 1,2,3,4
     section = db.Column(db.String(10), nullable=True)        # e.g. "A"
     is_active = db.Column(db.Boolean, default=True)
+    institution_id = db.Column(db.Integer, db.ForeignKey("institution.id"), nullable=False)
+    institution = db.relationship("Institution", backref="batches")
+    size = db.Column(db.Integer, nullable=False)           # number of students
+
 
     def __repr__(self):
         return f"<Batch {self.name}>"
@@ -86,11 +101,15 @@ class Subject(db.Model):
     __tablename__ = "subject"
 
     id = db.Column(db.Integer, primary_key=True)
-    code = db.Column(db.String(32), unique=True, nullable=False)  # e.g. CS201
+    code = db.Column(db.String(32), nullable=False)  # e.g. CS201
     name = db.Column(db.String(128), nullable=False)
     semester = db.Column(db.Integer, nullable=False)
     classes_per_week = db.Column(db.Integer, nullable=False)  # how many slots per week
     is_lab = db.Column(db.Boolean, default=False)
+    institution_id = db.Column(db.Integer, db.ForeignKey("institution.id"), nullable=False)
+    institution = db.relationship("Institution", backref="subjects")
+    max_classes_per_day = db.Column(db.Integer, nullable=False, default=1)
+
 
     def __repr__(self):
         return f"<Subject {self.code} {self.name}>"
@@ -100,16 +119,16 @@ class Faculty(db.Model):
     __tablename__ = "faculty"
 
     id = db.Column(db.Integer, primary_key=True)
-    # Optional link to User for login
-    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), unique=True, nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), unique=True, nullable=True)
     name = db.Column(db.String(128), nullable=False)
-    code = db.Column(db.String(32), unique=True, nullable=False)  # e.g. F001
-    max_load_per_week = db.Column(db.Integer, default=16)
+    email = db.Column(db.String(120), unique=True, nullable=False)
+    institution_id = db.Column(db.Integer, db.ForeignKey("institution.id"), nullable=False)
+    institution = db.relationship("Institution", backref="faculties")
 
     user = db.relationship("User", backref=db.backref("faculty_profile", uselist=False))
 
     def __repr__(self):
-        return f"<Faculty {self.code} {self.name}>"
+        return f"<Faculty {self.name}>"
 
 
 class Student(db.Model):
@@ -119,6 +138,9 @@ class Student(db.Model):
 
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), unique=True, nullable=False)
     batch_id = db.Column(db.Integer, db.ForeignKey("batch.id"), nullable=False)
+    institution_id = db.Column(db.Integer, db.ForeignKey("institution.id"), nullable=False)
+    institution = db.relationship("Institution", backref="students")
+
 
     # relationships
     user = db.relationship("User", backref=db.backref("student_profile", uselist=False))
@@ -212,6 +234,9 @@ class Timetable(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     status = db.Column(db.String(32), default="generated")  # generated/final/archived
     is_active = db.Column(db.Boolean, default=True)  # <--- important
+    institution_id = db.Column(db.Integer, db.ForeignKey("institution.id"), nullable=False)
+    institution = db.relationship("Institution", backref="timetables")
+
 
     entries = db.relationship(
         "TimetableEntry",

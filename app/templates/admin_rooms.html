@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}Manage Rooms · Intelligent Timetable{% endblock %}
+
+{% block content %}
+<div class="section-header">
+    <h2>Manage Rooms</h2>
+    <span>Add, edit, or remove rooms for your institution.</span>
+</div>
+
+<div class="row g-4">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title mb-3">Add New Room</h5>
+                <form method="post">
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Room Name / Number</label>
+                        <input type="text" name="name" id="name" class="form-control" placeholder="e.g., C-301" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="capacity" class="form-label">Capacity</label>
+                        <input type="number" name="capacity" id="capacity" class="form-control" placeholder="e.g., 60" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="room_type" class="form-label">Room Type</label>
+                        <select name="room_type" id="room_type" class="form-select">
+                            <option value="classroom">Classroom</option>
+                            <option value="lab">Lab</option>
+                            <option value="seminar">Seminar Hall</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Add Room</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title mb-3">Existing Rooms</h5>
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Capacity</th>
+                            <th>Type</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for room in rooms %}
+                        <tr>
+                            <td>{{ room.name }}</td>
+                            <td>{{ room.capacity }}</td>
+                            <td>{{ room.room_type }}</td>
+                            <td>
+                                <a href="#" class="btn btn-sm btn-outline-secondary disabled">Edit</a>
+                                <a href="#" class="btn btn-sm btn-outline-danger disabled">Delete</a>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="4" class="text-center text-muted">No rooms found. Add one to get started.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -92,6 +92,42 @@
                 </div>
             </div>
             <div class="col-6">
+                <div class="card h-100">
+                    <div class="card-body d-flex flex-column justify-content-between">
+                        <div>
+                            <h5 class="card-title mb-1">Manage Timeslots</h5>
+                            <p class="text-muted-soft mb-3">Define the time slots for classes.</p>
+                        </div>
+                        <a href="{{ url_for('main.admin_timeslots') }}"
+                           class="btn btn-outline-secondary btn-sm w-100">Manage</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6">
+                <div class="card h-100">
+                    <div class="card-body d-flex flex-column justify-content-between">
+                        <div>
+                            <h5 class="card-title mb-1">Manage Subjects</h5>
+                            <p class="text-muted-soft mb-3">Add, edit, or remove subjects.</p>
+                        </div>
+                        <a href="{{ url_for('main.admin_subjects') }}"
+                           class="btn btn-outline-secondary btn-sm w-100">Manage</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6">
+                <div class="card h-100">
+                    <div class="card-body d-flex flex-column justify-content-between">
+                        <div>
+                            <h5 class="card-title mb-1">Manage Rooms</h5>
+                            <p class="text-muted-soft mb-3">Add, edit, or remove rooms.</p>
+                        </div>
+                        <a href="{{ url_for('main.manage_rooms') }}"
+                           class="btn btn-outline-secondary btn-sm w-100">Manage</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6">
                                     <div class="card h-100">
                                         <div class="card-body d-flex flex-column justify-content-between">
                                             <div>

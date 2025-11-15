@@ -4,7 +4,7 @@
 {% block content %}
 <div class="section-header">
     <h2>Manage Faculty</h2>
-    <span>Add, edit, or remove faculty members.</span>
+    <span>Add, edit, or remove faculty members and their subject assignments.</span>
 </div>
 
 <div class="row g-4">
@@ -13,18 +13,14 @@
         <div class="card mb-3">
             <div class="card-body">
                 <h5 class="card-title mb-3">Add Faculty</h5>
-                <form method="POST">
+                <form method="POST" action="{{ url_for('main.admin_manage_faculty') }}">
                     <div class="mb-3">
                         <label class="form-label">Name</label>
                         <input name="name" class="form-control" required>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Code</label>
-                        <input name="code" class="form-control" required placeholder="e.g. F007">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Max Load / Week (hours)</label>
-                        <input name="max_load_per_week" class="form-control" type="number" min="1" max="40" value="16">
+                        <label class="form-label">Email</label>
+                        <input name="email" type="email" class="form-control" required>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Link to User (optional)</label>
@@ -53,25 +49,29 @@
                         <table class="table align-middle">
                             <thead>
                                 <tr>
-                                    <th>Code</th>
                                     <th>Name</th>
-                                    <th>Max Load</th>
+                                    <th>Email</th>
                                     <th>Linked User</th>
+                                    <th>Subjects</th>
                                     <th style="width: 130px;">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for fac in faculties %}
                                 <tr>
-                                    <td>{{ fac.code }}</td>
                                     <td>{{ fac.name }}</td>
-                                    <td>{{ fac.max_load_per_week }}</td>
+                                    <td>{{ fac.email }}</td>
                                     <td>
                                         {% if fac.user %}
                                             {{ fac.user.username }} ({{ fac.user.role }})
                                         {% else %}
                                             <span class="text-muted">None</span>
                                         {% endif %}
+                                    </td>
+                                    <td>
+                                        {% for fs in fac.subject_links %}
+                                            <span class="badge bg-secondary">{{ fs.subject.code }}</span>
+                                        {% endfor %}
                                     </td>
                                     <td>
                                         <a href="{{ url_for('main.admin_edit_faculty', faculty_id=fac.id) }}"

@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}Manage Timeslots · Intelligent Timetable{% endblock %}
+
+{% block content %}
+<div class="section-header">
+    <h2>Manage Timeslots</h2>
+    <span>Define the time slots for classes.</span>
+</div>
+
+<div class="row g-4">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title mb-3">Add New Timeslot</h5>
+                <form method="post" action="{{ url_for('main.admin_timeslots') }}">
+                    <div class="mb-3">
+                        <label for="day_of_week" class="form-label">Day of Week</label>
+                        <select name="day_of_week" id="day_of_week" class="form-select" required>
+                            <option value="0">Monday</option>
+                            <option value="1">Tuesday</option>
+                            <option value="2">Wednesday</option>
+                            <option value="3">Thursday</option>
+                            <option value="4">Friday</option>
+                            <option value="5">Saturday</option>
+                            <option value="6">Sunday</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="start_time" class="form-label">Start Time</label>
+                        <input type="time" name="start_time" id="start_time" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="end_time" class="form-label">End Time</label>
+                        <input type="time" name="end_time" id="end_time" class="form-control" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Add Timeslot</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title mb-3">Existing Timeslots</h5>
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Day of Week</th>
+                            <th>Start Time</th>
+                            <th>End Time</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for timeslot in timeslots %}
+                        <tr>
+                            <td>{{ ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"][timeslot.day_of_week] }}</td>
+                            <td>{{ timeslot.start_time.strftime('%H:%M') }}</td>
+                            <td>{{ timeslot.end_time.strftime('%H:%M') }}</td>
+                            <td>
+                                <a href="#" class="btn btn-sm btn-outline-danger disabled">Delete</a>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="4" class="text-center text-muted">No timeslots found. Add one to get started.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

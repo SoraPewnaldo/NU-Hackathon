@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}Manage Subjects · Intelligent Timetable{% endblock %}
+
+{% block content %}
+<div class="section-header">
+    <h2>Manage Subjects</h2>
+    <span>Add, edit, or remove subjects for your institution.</span>
+</div>
+
+<div class="row g-4">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title mb-3">Add New Subject</h5>
+                <form method="post" action="{{ url_for('main.admin_subjects') }}">
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Subject Name</label>
+                        <input type="text" name="name" id="name" class="form-control" placeholder="e.g., Introduction to AI" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="code" class="form-label">Subject Code</label>
+                        <input type="text" name="code" id="code" class="form-control" placeholder="e.g., CS401" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="semester" class="form-label">Semester</label>
+                        <input type="number" name="semester" id="semester" class="form-control" placeholder="e.g., 7" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="classes_per_week" class="form-label">Classes per Week</label>
+                        <input type="number" name="classes_per_week" id="classes_per_week" class="form-control" value="3" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="max_classes_per_day" class="form-label">Max Classes per Day</label>
+                        <input type="number" name="max_classes_per_day" id="max_classes_per_day" class="form-control" value="1" required>
+                    </div>
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" name="is_lab" id="is_lab">
+                        <label class="form-check-label" for="is_lab">
+                            Is a Lab Course
+                        </label>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Add Subject</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title mb-3">Existing Subjects</h5>
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Code</th>
+                            <th>Name</th>
+                            <th>Semester</th>
+                            <th>Classes/Week</th>
+                            <th>Max/Day</th>
+                            <th>Type</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for subject in subjects %}
+                        <tr>
+                            <td>{{ subject.code }}</td>
+                            <td>{{ subject.name }}</td>
+                            <td>{{ subject.semester }}</td>
+                            <td>{{ subject.classes_per_week }}</td>
+                            <td>{{ subject.max_classes_per_day }}</td>
+                            <td>{% if subject.is_lab %}Lab{% else %}Theory{% endif %}</td>
+                            <td>
+                                <a href="#" class="btn btn-sm btn-outline-secondary disabled">Edit</a>
+                                <a href="#" class="btn btn-sm btn-outline-danger disabled">Delete</a>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="7" class="text-center text-muted">No subjects found. Add one to get started.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
