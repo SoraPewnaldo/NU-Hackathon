@@ -1,6 +1,6 @@
-# init_db.py
+# init_db.py  — SMALL DEMO DATASET
 
-from datetime import time
+from datetime import time, timedelta, datetime
 
 from app import create_app, db
 from app.models import (
@@ -13,13 +13,13 @@ from app.models import (
     Timetable,
     TimetableEntry,
     FacultySubject,
-    Student,    # <-- NEW
+    Student,    # <-- make sure you have this model
 )
 
 app = create_app()
 
 with app.app_context():
-    # Optional: full reset while you are still developing:
+    # While testing, you can uncomment this to hard-reset:
     # db.drop_all()
 
     db.create_all()
@@ -46,13 +46,13 @@ with app.app_context():
 
     db.session.commit()
 
-    # ---------- 25 classrooms ----------
+    # ---------- 10 rooms ----------
 
-    if Room.query.count() < 25:
-        print("Seeding 25 classrooms...")
+    if Room.query.count() < 10:
+        print("Seeding 10 rooms...")
         rooms = []
-        for i in range(1, 26):
-            room_name = f"C-{100 + i}"  # C-101 .. C-125
+        for i in range(1, 11):
+            room_name = f"R-{100 + i}"  # R-101 .. R-110
             if not Room.query.filter_by(name=room_name).first():
                 rooms.append(
                     Room(
@@ -67,23 +67,23 @@ with app.app_context():
     else:
         print(f"Rooms already present: {Room.query.count()}")
 
-    # ---------- 4 batches = 1st, 2nd, 3rd, 4th year ----------
+    # ---------- 4 year batches (1st–4th year) ----------
 
-    # We'll represent each year by its "current semester":
-    #   1st year -> sem 1
-    #   2nd year -> sem 3
-    #   3rd year -> sem 5
-    #   4th year -> sem 7
+    # Each batch has a "current semester":
+    #   Year 1 → sem 1 (odd)
+    #   Year 2 → sem 3 (odd)
+    #   Year 3 → sem 5 (odd)
+    #   Year 4 → sem 7 (odd)
     #
-    # Program: "BTech CSE" for all.
+    # You can later change 1→2, 3→4, 5→6, 7→8 to test even sem.
 
     if Batch.query.count() == 0:
         print("Seeding year-wise batches...")
         batches = [
-            Batch(name="CSE-Y1", program="BTech CSE", semester=1, size=125),
-            Batch(name="CSE-Y2", program="BTech CSE", semester=3, size=125),
-            Batch(name="CSE-Y3", program="BTech CSE", semester=5, size=125),
-            Batch(name="CSE-Y4", program="BTech CSE", semester=7, size=125),
+            Batch(name="CSE-Y1", program="BTech CSE", semester=1, size=20),
+            Batch(name="CSE-Y2", program="BTech CSE", semester=3, size=20),
+            Batch(name="CSE-Y3", program="BTech CSE", semester=5, size=20),
+            Batch(name="CSE-Y4", program="BTech CSE", semester=7, size=20),
         ]
         db.session.add_all(batches)
         db.session.commit()
@@ -91,35 +91,50 @@ with app.app_context():
     else:
         print(f"Found existing batches: {Batch.query.count()} (skipping batch seed)")
 
-    # ---------- subjects per programme/year ----------
+    # ---------- subjects for ALL 8 semesters ----------
+
+    # 20 subjects total, spread across 8 sems.
+    # You can treat "odd sem" = semester % 2 == 1, "even sem" = semester % 2 == 0
 
     if Subject.query.count() == 0:
-        print("Seeding subjects per year (BTech CSE)...")
+        print("Seeding subjects for 8 semesters (BTech CSE)...")
 
         subjects_data = [
-            # 1st year – Semester 1
-            dict(code="CS101", name="Programming Fundamentals", semester=1, classes_per_week=4, is_lab=False),
-            dict(code="MA101", name="Engineering Mathematics I", semester=1, classes_per_week=3, is_lab=False),
-            dict(code="PH101", name="Engineering Physics", semester=1, classes_per_week=3, is_lab=False),
-            dict(code="HS101", name="Communication Skills", semester=1, classes_per_week=2, is_lab=False),
+            # Sem 1 (odd)
+            dict(code="CS101", name="Programming Fundamentals", semester=1, classes_per_week=4),
+            dict(code="MA101", name="Engineering Mathematics I", semester=1, classes_per_week=3),
+            dict(code="PH101", name="Engineering Physics", semester=1, classes_per_week=3),
 
-            # 2nd year – Semester 3
-            dict(code="CS201", name="Data Structures", semester=3, classes_per_week=4, is_lab=False),
-            dict(code="CS202", name="Object Oriented Programming", semester=3, classes_per_week=3, is_lab=False),
-            dict(code="MA201", name="Discrete Mathematics", semester=3, classes_per_week=3, is_lab=False),
-            dict(code="EC201", name="Digital Logic Design", semester=3, classes_per_week=3, is_lab=False),
+            # Sem 2 (even)
+            dict(code="CS102", name="Structured Programming in C", semester=2, classes_per_week=4),
+            dict(code="MA102", name="Engineering Mathematics II", semester=2, classes_per_week=3),
 
-            # 3rd year – Semester 5
-            dict(code="CS301", name="Database Systems", semester=5, classes_per_week=4, is_lab=False),
-            dict(code="CS302", name="Operating Systems", semester=5, classes_per_week=4, is_lab=False),
-            dict(code="CS303", name="Computer Networks", semester=5, classes_per_week=3, is_lab=False),
-            dict(code="CS304", name="Software Engineering", semester=5, classes_per_week=3, is_lab=False),
+            # Sem 3 (odd)
+            dict(code="CS201", name="Object Oriented Programming", semester=3, classes_per_week=4),
+            dict(code="MA201", name="Discrete Mathematics", semester=3, classes_per_week=3),
+            dict(code="EC201", name="Digital Logic Design", semester=3, classes_per_week=3),
 
-            # 4th year – Semester 7
-            dict(code="CS401", name="Artificial Intelligence", semester=7, classes_per_week=3, is_lab=False),
-            dict(code="CS402", name="Machine Learning", semester=7, classes_per_week=3, is_lab=False),
-            dict(code="CS403", name="Distributed Systems", semester=7, classes_per_week=3, is_lab=False),
-            dict(code="CS404", name="Major Project", semester=7, classes_per_week=2, is_lab=False),
+            # Sem 4 (even)
+            dict(code="CS202", name="Data Structures and Algorithms", semester=4, classes_per_week=4),
+            dict(code="CS204", name="Computer Organization", semester=4, classes_per_week=3),
+
+            # Sem 5 (odd)
+            dict(code="CS301", name="Database Systems", semester=5, classes_per_week=4),
+            dict(code="CS302", name="Operating Systems", semester=5, classes_per_week=4),
+            dict(code="CS303", name="Computer Networks", semester=5, classes_per_week=3),
+
+            # Sem 6 (even)
+            dict(code="CS304", name="Software Engineering", semester=6, classes_per_week=3),
+            dict(code="CS305", name="Web Technologies", semester=6, classes_per_week=3),
+
+            # Sem 7 (odd)
+            dict(code="CS401", name="Artificial Intelligence", semester=7, classes_per_week=3),
+            dict(code="CS402", name="Distributed Systems", semester=7, classes_per_week=3),
+            dict(code="CS403", name="Compiler Design", semester=7, classes_per_week=3),
+
+            # Sem 8 (even)
+            dict(code="CS404", name="Machine Learning", semester=8, classes_per_week=3),
+            dict(code="CS405", name="Project / Internship", semester=8, classes_per_week=2),
         ]
 
         subjects = []
@@ -129,7 +144,7 @@ with app.app_context():
                 name=s["name"],
                 semester=s["semester"],
                 classes_per_week=s["classes_per_week"],
-                is_lab=s["is_lab"],
+                is_lab=False,
             )
             subjects.append(subject)
 
@@ -139,66 +154,89 @@ with app.app_context():
     else:
         print(f"Subjects already present: {Subject.query.count()}")
 
-    # ---------- 50 teachers (User + Faculty) ----------
+    # Get all subjects in a stable order
+    all_subjects = Subject.query.order_by(Subject.semester, Subject.code).all()
+    num_subjects = len(all_subjects)
+    print(f"Found {num_subjects} subjects.")
+
+    # ---------- faculty: 1 teacher per subject ----------
 
     existing_faculty_count = Faculty.query.count()
-    if existing_faculty_count < 50:
-        print("Seeding faculty users & profiles up to 50...")
-        for i in range(1, 51):
+    if existing_faculty_count < num_subjects:
+        print(f"Seeding {num_subjects} faculty users & profiles (1 per subject)...")
+
+        for i, subject in enumerate(all_subjects, start=1):
             username = f"fac_{i:03d}"
             email = f"{username}@example.com"
             fac_code = f"F{i:03d}"
 
+            # Create faculty user
             user = get_or_create_user(
                 username=username,
                 email=email,
                 role=User.ROLE_FACULTY,
-                password="faculty123",
+                password="faculty123",  # same password for all demo faculty
             )
             db.session.flush()
+
+            # Human-readable name that also tells you what they teach
+            display_name = f"{subject.name} Teacher"
 
             faculty = Faculty.query.filter_by(code=fac_code).first()
             if not faculty:
                 faculty = Faculty(
-                    name=f"Faculty {i}",
+                    name=display_name,
                     code=fac_code,
-                    max_load_per_week=16,
+                    max_load_per_week=12,
                     user_id=user.id,
                 )
                 db.session.add(faculty)
+
         db.session.commit()
         print(f"✅ Total faculty now: {Faculty.query.count()}")
     else:
         print(f"Faculty already present: {existing_faculty_count}")
 
-    # ---------- map faculty to subjects (rough but enough for demo) ----------
+    # ---------- 1:1 Faculty–Subject mappings ----------
 
     if FacultySubject.query.count() == 0:
-        print("Seeding Faculty–Subject mappings...")
-        all_subjects = Subject.query.order_by(Subject.semester, Subject.id).all()
+        print("Creating 1:1 Faculty–Subject mappings...")
+
+        # make sure we have them in the same order
+        all_subjects = Subject.query.order_by(Subject.semester, Subject.code).all()
         all_faculty = Faculty.query.order_by(Faculty.id).all()
 
-        if all_subjects and all_faculty:
+        if len(all_faculty) < len(all_subjects):
+            print("⚠️ Not enough faculty for each subject. Check faculty seeding.")
+        else:
             mappings = []
-            # simple round-robin: assign one faculty per subject
             for idx, subject in enumerate(all_subjects):
-                fac = all_faculty[idx % len(all_faculty)]
-                mappings.append(FacultySubject(faculty_id=fac.id, subject_id=subject.id))
+                faculty = all_faculty[idx]  # 1:1
+                mappings.append(
+                    FacultySubject(
+                        faculty_id=faculty.id,
+                        subject_id=subject.id,
+                    )
+                )
+                print(f" - {faculty.name} assigned to {subject.code} ({subject.name})")
 
             db.session.add_all(mappings)
             db.session.commit()
-            print("✅ Faculty–Subject mappings seeded.")
-        else:
-            print("⚠️ Not enough faculties or subjects to map.")
+            print("✅ 1:1 Faculty–Subject mappings created.")
     else:
         print("Faculty–Subject mappings already present.")
 
-    # ---------- 500 students (User, role=student) + Student profiles ----------
+    # ---------- student users + Student profiles ----------
+
+    # Small dataset: 80 students total, 20 per year-batch
+    target_students_per_batch = 20
 
     current_student_users = User.query.filter_by(role=User.ROLE_STUDENT).count()
-    if current_student_users < 500:
-        print("Seeding student users up to 500...")
-        for i in range(1, 501):
+    total_target_students = target_students_per_batch * 4  # 4 batches
+
+    if current_student_users < total_target_students:
+        print(f"Seeding {total_target_students} student users...")
+        for i in range(1, total_target_students + 1):
             username = f"stud_{i:03d}"
             email = f"{username}@example.com"
             if not User.query.filter_by(username=username).first():
@@ -213,7 +251,7 @@ with app.app_context():
     else:
         print(f"Student users already present: {current_student_users}")
 
-    # Now create Student records and distribute across year-batches
+    # Create Student records and distribute across year-batches
 
     if Student.query.count() == 0:
         print("Creating Student profiles and distributing across batches (years)...")
@@ -221,25 +259,21 @@ with app.app_context():
         student_users = (
             User.query.filter_by(role=User.ROLE_STUDENT)
             .order_by(User.id)
+            .limit(total_target_students)
             .all()
         )
-        batches = Batch.query.order_by(Batch.semester).all()  # sem 1,3,5,7 order
+        batches = Batch.query.order_by(Batch.semester).all()  # Y1:Y4 -> sem 1,3,5,7
 
-        if not batches:
-            raise RuntimeError("No batches found. Check batch seeding.")
-
-        total_students = len(student_users)
-        num_batches = len(batches)
-        base_per_batch = total_students // num_batches
-        remainder = total_students % num_batches
+        if len(batches) != 4:
+            raise RuntimeError("Expected exactly 4 batches for 4 years.")
 
         idx = 0
         for b_index, batch in enumerate(batches):
-            # distribute remainders to first 'remainder' batches
-            count_for_this_batch = base_per_batch + (1 if b_index < remainder else 0)
-            print(f" - Assigning {count_for_this_batch} students to {batch.name} (Year {b_index+1})")
+            print(f" - Assigning {target_students_per_batch} students to {batch.name}")
 
-            for j in range(count_for_this_batch):
+            for j in range(target_students_per_batch):
+                if idx >= len(student_users):
+                    break
                 user = student_users[idx]
                 idx += 1
 
@@ -262,25 +296,34 @@ with app.app_context():
     # ---------- timeslots (Mon–Fri, 5 per day) ----------
 
     if Timeslot.query.count() == 0:
-        print("Seeding timeslots (Mon–Fri, 5 periods/day)...")
-        days = list(range(0, 5))  # 0=Mon .. 4=Fri
-        periods = [
-            (time(9, 0), time(10, 0)),
-            (time(10, 0), time(11, 0)),
-            (time(11, 0), time(12, 0)),
-            (time(13, 0), time(14, 0)),
-            (time(14, 0), time(15, 0)),
-        ]
+        days = list(range(0, 5))  # 0=Mon ... 4=Fri
+
+        # 1-hour periods from 8:30 to 17:30
+        start_hour = 8
+        start_minute = 30
+        end_hour = 17
+        end_minute = 30
 
         timeslots = []
+
         for d in days:
-            for start, end in periods:
-                timeslots.append(
-                    Timeslot(day_of_week=d, start_time=start, end_time=end)
+            current = datetime(2000, 1, 1, start_hour, start_minute)  # dummy date
+            end_day = datetime(2000, 1, 1, end_hour, end_minute)
+
+            while current < end_day:
+                start_t = current.time()
+                end_t = (current + timedelta(hours=1)).time()
+
+                ts = Timeslot(
+                    day_of_week=d,
+                    start_time=start_t,
+                    end_time=end_t,
                 )
+                timeslots.append(ts)
+                current += timedelta(hours=1)
 
         db.session.add_all(timeslots)
         db.session.commit()
-        print("✅ Timeslots seeded.")
+        print("Seeded timeslots (Mon–Fri, 8:30–17:30, 1-hour slots).")
 
-    print("🎉 Database seeding complete.")
+    print("🎉 SMALL demo database seeding complete.")

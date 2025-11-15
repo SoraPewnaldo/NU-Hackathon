@@ -7,47 +7,12 @@
     <span class="text-muted-soft">ID {{ timetable.id }} · {{ timetable.created_at }}</span>
 </div>
 
-<p class="text-muted-soft mb-3">
-    Each cell = subject · room · faculty for that batch & timeslot.
-</p>
-
-<div class="card">
-    <div class="card-body">
-        <div class="timetable-grid">
-            <!-- Header row: empty corner + one column per batch -->
-            <div class="timetable-cell timetable-header"></div>
-            {% for batch in batches %}
-                <div class="timetable-cell timetable-header">
-                    {{ batch.name }}
-                </div>
-            {% endfor %}
-
-            <!-- One row per timeslot -->
-            {% for slot in timeslots %}
-                <div class="timetable-cell timetable-header">
-                    {{ day_names[slot.day_of_week] }}<br>
-                    {{ slot.start_time.strftime("%H:%M") }}–{{ slot.end_time.strftime("%H:%M") }}
-                </div>
-
-                {% for batch in batches %}
-                    {% set entry = entry_map.get((batch.id, slot.id)) %}
-                    <div class="timetable-cell">
-                        {% if entry %}
-                            {% set subj = entry.subject %}
-                            {% set room = entry.room %}
-                            {% set fac = entry.faculty %}
-                            <strong>{{ subj.code }}</strong> {{ subj.name }}<br>
-                            <span class="text-muted-soft">
-                                {{ room.name }} · {{ fac.name }}
-                            </span>
-                        {% else %}
-                            <span class="text-muted-soft">—</span>
-                        {% endif %}
-                    </div>
-                {% endfor %}
-            {% endfor %}
-        </div>
+{% if not has_timetable %}
+    <div class="alert alert-warning">
+        No timetable data available for this timetable.
     </div>
-</div>
+{% else %}
+    {% include "_timetable_grid.html" with context %}
+{% endif %}
 
 {% endblock %}

@@ -34,32 +34,13 @@
 </div>
 
 {% if selected_batch_id %}
-    <div class="card">
-        <div class="card-body">
-            <div class="timetable-grid">
-                <div class="timetable-cell timetable-header">Time</div>
-                <div class="timetable-cell timetable-header">Class</div>
-
-                {% for slot in timeslots %}
-                    <div class="timetable-cell timetable-header">
-                        {{ day_names[slot.day_of_week] }}<br>
-                        {{ slot.start_time.strftime("%H:%M") }}–{{ slot.end_time.strftime("%H:%M") }}
-                    </div>
-                    <div class="timetable-cell">
-                        {% set e = entries_map.get(slot.id) %}
-                        {% if e %}
-                            <strong>{{ e.subject.code }}</strong> {{ e.subject.name }}<br>
-                            <span class="text-muted-soft">
-                                Room {{ e.room.name }} · {{ e.faculty.name }}
-                            </span>
-                        {% else %}
-                            <span class="text-muted-soft">No class</span>
-                        {% endif %}
-                    </div>
-                {% endfor %}
-            </div>
+    {% if not has_timetable %}
+        <div class="alert alert-warning">
+            No timetable generated yet for this batch.
         </div>
-    </div>
+    {% else %}
+        {% include "_timetable_grid.html" with context %}
+    {% endif %}
 {% endif %}
 
 {% endblock %}

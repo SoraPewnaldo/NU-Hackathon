@@ -98,7 +98,7 @@ class Faculty(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     # Optional link to User for login
-    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), unique=True, nullable=False)
     name = db.Column(db.String(128), nullable=False)
     code = db.Column(db.String(32), unique=True, nullable=False)  # e.g. F001
     max_load_per_week = db.Column(db.Integer, default=16)
@@ -150,11 +150,25 @@ class FacultySubject(db.Model):
     faculty_id = db.Column(db.Integer, db.ForeignKey("faculty.id"), nullable=False)
     subject_id = db.Column(db.Integer, db.ForeignKey("subject.id"), nullable=False)
 
-    faculty = db.relationship("Faculty", backref=db.backref("subjects", lazy="dynamic"))
-    subject = db.relationship("Subject", backref=db.backref("faculties", lazy="dynamic"))
+    faculty = db.relationship("Faculty", backref=db.backref("faculty_subjects", lazy="dynamic"))
+    subject = db.relationship("Subject", backref=db.backref("subject_faculties", lazy="dynamic"))
 
     def __repr__(self):
         return f"<FacultySubject faculty={self.faculty_id} subject={self.subject_id}>"
+
+
+class FacultyUnavailableSlot(db.Model):
+    __tablename__ = "faculty_unavailable_slot"
+
+    id = db.Column(db.Integer, primary_key=True)
+    faculty_id = db.Column(db.Integer, db.ForeignKey("faculty.id"), nullable=False)
+    timeslot_id = db.Column(db.Integer, db.ForeignKey("timeslot.id"), nullable=False)
+
+    faculty = db.relationship("Faculty", backref=db.backref("unavailable_slots", lazy="dynamic"))
+    timeslot = db.relationship("Timeslot", backref=db.backref("unavailable_for", lazy="dynamic"))
+
+    def __repr__(self):
+        return f"<FacultyUnavailableSlot faculty={self.faculty_id} slot={self.timeslot_id}>"
 
 
 # --------------------

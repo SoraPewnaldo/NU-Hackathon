@@ -104,3 +104,219 @@ body {
     color: #9ca3af;
     font-size: 0.8rem;
 }
+
+/* --- Timetable legend & table --- */
+
+.tt-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.25rem;
+    font-size: 0.8rem;
+    margin-bottom: 0.75rem;
+}
+
+.tt-legend span {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.tt-legend span::before {
+    content: "";
+    width: 12px;
+    height: 12px;
+    border-radius: 2px;
+    display: inline-block;
+}
+
+/* Colors: course, room, faculty, section */
+.tt-legend-course::before { background-color: #f97316; }  /* orange  */
+.tt-legend-room::before   { background-color: #2563eb; }  /* blue    */
+.tt-legend-faculty::before{ background-color: #b91c1c; }  /* red     */
+.tt-legend-section::before{ background-color: #16a34a; }  /* green   */
+
+.tt-wrapper {
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 12px 24px rgba(15, 23, 42, 0.08);
+    padding: 1rem 1.25rem 1.25rem;
+    overflow-x: auto;
+}
+
+/* Table-style grid */
+.tt-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8rem;
+    table-layout: fixed;
+}
+
+.tt-table thead th {
+    text-align: center;
+    font-weight: 600;
+    border: 1px solid #d4d4d8;
+    padding: 4px 6px;
+    background-color: #f3f4f6;
+}
+
+.tt-table tbody th {
+    text-align: center;
+    font-weight: 600;
+    border: 1px solid #d4d4d8;
+    padding: 6px;
+    background-color: #f9fafb;
+    width: 70px;
+}
+
+.tt-table td {
+    border: 1px solid #d4d4d8;
+    padding: 4px 4px;
+    vertical-align: top;
+    min-width: 90px;
+}
+
+/* Header: period number + time range */
+.tt-period-num {
+    font-weight: 600;
+    margin-bottom: 2px;
+}
+
+.tt-period-time {
+    font-size: 0.7rem;
+    color: #4b5563;
+}
+
+/* Inside each cell */
+.tt-cell-entry + .tt-cell-entry {
+    margin-top: 4px;
+    border-top: 1px dashed #e5e7eb;
+    padding-top: 2px;
+}
+
+.tt-course {
+    font-weight: 600;
+    color: #f97316;   /* orange */
+}
+
+.tt-room {
+    color: #2563eb;   /* blue */
+    font-size: 0.75rem;
+}
+
+.tt-faculty {
+    color: #b91c1c;   /* dark red */
+    font-size: 0.75rem;
+}
+
+.tt-section {
+    color: #16a34a;   /* green */
+    font-size: 0.75rem;
+}
+
+/* --- Timetable legend & table --- */
+
+.tt-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.25rem;
+    font-size: 0.8rem;
+    margin-bottom: 0.75rem;
+}
+
+.tt-legend span {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.tt-legend span::before {
+    content: "";
+    width: 12px;
+    height: 12px;
+    border-radius: 2px;
+    display: inline-block;
+}
+
+/* Colors: course, room, faculty, section */
+.tt-legend-course::before { background-color: #f97316; }  /* orange  */
+.tt-legend-room::before   { background-color: #2563eb; }  /* blue    */
+.tt-legend-faculty::before{ background-color: #b91c1c; }  /* red     */
+.tt-legend-section::before{ background-color: #16a34a; }  /* green   */
+
+.tt-wrapper {
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 12px 24px rgba(15, 23, 42, 0.08);
+    padding: 1rem 1.25rem 1.25rem;
+    overflow-x: auto;
+}
+
+/* Table-style grid */
+.tt-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8rem;
+    table-layout: fixed;
+}
+
+.tt-table thead th {
+    text-align: center;
+    font-weight: 600;
+    border: 1px solid #d4d4d8;
+    padding: 4px 6px;
+    background-color: #f3f4f6;
+}
+
+.tt-table tbody th {
+    text-align: center;
+    font-weight: 600;
+    border: 1px solid #d4d4d8;
+    padding: 6px;
+    background-color: #f9fafb;
+    width: 70px;
+}
+
+.tt-table td {
+    border: 1px solid #d4d4d8;
+    padding: 4px 4px;
+    vertical-align: top;
+    min-width: 90px;
+}
+
+/* Header: period number + time range */
+.tt-period-num {
+    font-weight: 600;
+    margin-bottom: 2px;
+}
+
+.tt-period-time {
+    font-size: 0.7rem;
+    color: #4b5563;
+}
+
+/* Inside each cell */
+.tt-cell-entry + .tt-cell-entry {
+    margin-top: 4px;
+    border-top: 1px dashed #e5e7eb;
+    padding-top: 2px;
+}
+
+.tt-course {
+    font-weight: 600;
+    color: #f97316;   /* orange */
+}
+
+.tt-room {
+    color: #2563eb;   /* blue */
+    font-size: 0.75rem;
+}
+
+.tt-faculty {
+    color: #b91c1c;   /* dark red */
+    font-size: 0.75rem;
+}
+
+.tt-section {
+    color: #16a34a;   /* green */
+    font-size: 0.75rem;
+}
