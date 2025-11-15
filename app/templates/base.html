@@ -14,15 +14,40 @@
         <div class="collapse navbar-collapse">
             <ul class="navbar-nav ms-auto">
                 {% if current_user.is_authenticated %}
-                <li class="nav-item">
-                    <span class="navbar-text me-3">
-                        {{ current_user.username }} ({{ current_user.role }})
-                    </span>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('main.logout') }}">Logout</a>
-                </li>
-                {% endif %}
+    <li class="nav-item">
+        <span class="navbar-text me-3">
+            {{ current_user.username }} ({{ current_user.role }})
+        </span>
+    </li>
+
+    {% if current_user.is_admin() %}
+        <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('main.admin_dashboard') }}">Admin</a>
+        </li>
+    {% endif %}
+
+    {% if current_user.is_hod() %}
+        <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('main.hod_dashboard') }}">HOD</a>
+        </li>
+    {% endif %}
+
+    {% if current_user.is_faculty() %}
+        <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('main.faculty_dashboard') }}">Faculty</a>
+        </li>
+    {% endif %}
+
+    {% if current_user.is_student() %}
+        <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('main.student_dashboard') }}">Student</a>
+        </li>
+    {% endif %}
+
+    <li class="nav-item">
+        <a class="nav-link" href="{{ url_for('main.logout') }}">Logout</a>
+    </li>
+{% endif %}
             </ul>
         </div>
     </div>

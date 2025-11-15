@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Department Head Dashboard</h2>
+<p>Welcome, {{ user.username }} (HOD)</p>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card mb-3">
+            <div class="card-body">
+                <h5 class="card-title">Department Overview</h5>
+                <ul>
+                    <li>See timetable for your department's batches</li>
+                    <li>Review faculty loads and room allocations</li>
+                    <li>Approve / reject timetable versions</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

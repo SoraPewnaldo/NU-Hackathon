@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Student Dashboard</h2>
+<p>Welcome, {{ user.username }} (Student)</p>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card mb-3">
+            <div class="card-body">
+                <h5 class="card-title">Batch Timetable</h5>
+                <p>Later: show timetable for the student's batch.</p>
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-body">
+                <h5 class="card-title">Updates</h5>
+                <ul>
+                    <li>Room changes / cancelled classes</li>
+                    <li>Special events impacting timetable</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

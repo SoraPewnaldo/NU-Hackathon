@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Admin Dashboard</h2>
+<p>Welcome, {{ user.username }} (Admin)</p>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card mb-3">
+            <div class="card-body">
+                <h5 class="card-title">Global Controls</h5>
+                <ul>
+                    <li>Manage departments, rooms, batches, faculties</li>
+                    <li>Trigger timetable generation for all departments</li>
+                    <li>View system-wide clash reports & utilization</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

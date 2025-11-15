@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Faculty Dashboard</h2>
+<p>Welcome, {{ user.username }} (Faculty)</p>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card mb-3">
+            <div class="card-body">
+                <h5 class="card-title">Your Timetable</h5>
+                <p>Later: show all TimetableEntries where faculty = you.</p>
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-body">
+                <h5 class="card-title">Actions</h5>
+                <ul>
+                    <li>Request slot change / swap (future feature)</li>
+                    <li>Mark unavailability for a date (future feature)</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

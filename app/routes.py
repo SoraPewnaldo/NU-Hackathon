@@ -67,4 +67,43 @@ def logout():
 @main.route("/dashboard")
 @login_required
 def dashboard():
-    return render_template("dashboard.html", user=current_user)
+    # Central router based on role
+    if current_user.is_admin():
+        return redirect(url_for("main.admin_dashboard"))
+    elif current_user.is_hod():
+        return redirect(url_for("main.hod_dashboard"))
+    elif current_user.is_faculty():
+        return redirect(url_for("main.faculty_dashboard"))
+    elif current_user.is_student():
+        return redirect(url_for("main.student_dashboard"))
+    else:
+        flash("Unknown role, contact administrator.", "danger")
+        return redirect(url_for("main.logout"))
+
+
+@main.route("/admin/dashboard")
+@login_required
+@roles_required("admin")
+def admin_dashboard():
+    return render_template("admin_dashboard.html", user=current_user)
+
+
+@main.route("/hod/dashboard")
+@login_required
+@roles_required("admin", "hod")   # admin can also see HOD view if you want
+def hod_dashboard():
+    return render_template("hod_dashboard.html", user=current_user)
+
+
+@main.route("/faculty/dashboard")
+@login_required
+@roles_required("faculty", "hod", "admin")  # allow HOD/admin to peek as faculty
+def faculty_dashboard():
+    return render_template("faculty_dashboard.html", user=current_user)
+
+
+@main.route("/student/dashboard")
+@login_required
+@roles_required("student", "admin")  # admin can impersonate/check student view
+def student_dashboard():
+    return render_template("student_dashboard.html", user=current_user)
