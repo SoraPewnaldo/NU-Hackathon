@@ -1,9 +1,13 @@
 /* Global */
 body.app-body {
     margin: 0;
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    background-color: #f4f5fb;
-    color: #111827;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background-color: #121212;
+    color: #ffffff; /* Changed to white */
+}
+
+h1, h2, h3, h4, h5, h6, strong {
+    color: #ffffff !important;
 }
 
 .app-layout {
@@ -13,9 +17,9 @@ body.app-body {
 
 /* Sidebar */
 .app-sidebar {
-    width: 240px;
-    background-color: #ffffff;
-    border-right: 1px solid #e5e7eb;
+    width: 220px;
+    background-color: #1e1e1e;
+    border-right: 1px solid #333;
     display: flex;
     flex-direction: column;
     padding: 1rem 0.75rem;
@@ -26,17 +30,19 @@ body.app-body {
     align-items: center;
     gap: 0.5rem;
     padding: 0 0.5rem 1rem 0.5rem;
-    border-bottom: 1px solid #e5e7eb;
+    border-bottom: 1px solid #333;
     margin-bottom: 0.75rem;
 }
 
 .sidebar-logo {
     font-size: 1.4rem;
+    color: #bb86fc;
 }
 
 .sidebar-title {
     font-weight: 600;
     font-size: 0.95rem;
+    color: #ffffff; /* Changed to white */
 }
 
 .sidebar-nav {
@@ -50,12 +56,13 @@ body.app-body {
     display: flex;
     align-items: center;
     gap: 0.6rem;
-    padding: 0.55rem 0.65rem;
-    border-radius: 0.55rem;
+    padding: 0.65rem 0.75rem;
+    border-radius: 6px;
     font-size: 0.9rem;
-    color: #4b5563;
+    color: #ffffff; /* Changed to white */
     text-decoration: none;
-    margin-bottom: 0.15rem;
+    margin-bottom: 0.25rem;
+    transition: background-color 0.2s, color 0.2s;
 }
 
 .sidebar-link .icon {
@@ -63,18 +70,18 @@ body.app-body {
 }
 
 .sidebar-link:hover {
-    background-color: #eef2ff;
-    color: #1d4ed8;
+    background-color: #333;
+    color: #ffffff;
 }
 
 .sidebar-link.active {
-    background-color: #e0ebff;
-    color: #1d4ed8;
+    background-color: #3700b3;
+    color: #ffffff;
     font-weight: 500;
 }
 
 .sidebar-footer {
-    border-top: 1px solid #e5e7eb;
+    border-top: 1px solid #333;
     padding-top: 0.75rem;
 }
 
@@ -88,12 +95,13 @@ body.app-body {
     width: 32px;
     height: 32px;
     border-radius: 999px;
-    background-color: #e5e7eb;
+    background-color: #333;
     display: flex;
     align-items: center;
     justify-content: center;
     font-weight: 600;
     font-size: 0.9rem;
+    color: #ffffff; /* Changed to white */
 }
 
 /* Main area */
@@ -106,8 +114,8 @@ body.app-body {
 /* Top bar */
 .app-topbar {
     height: 64px;
-    background-color: #ffffff;
-    border-bottom: 1px solid #e5e7eb;
+    background-color: #1e1e1e;
+    border-bottom: 1px solid #333;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -118,6 +126,7 @@ body.app-body {
     font-size: 1.15rem;
     font-weight: 600;
     margin: 0;
+    color: #ffffff !important; /* Changed to white */
 }
 
 /* Content */
@@ -127,27 +136,29 @@ body.app-body {
 
 /* Cards / widgets */
 .card {
-    border: none;
-    border-radius: 14px;
-    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+    background-color: #1e1e1e;
+    border: 1px solid #333;
+    border-radius: 8px;
+    box-shadow: none;
 }
 
 .metric-card-label {
     font-size: 0.75rem;
     text-transform: uppercase;
     letter-spacing: 0.06em;
-    color: #9ca3af;
+    color: #ffffff !important; /* Changed to white */
     margin-bottom: 0.25rem;
 }
 
 .metric-card-value {
     font-size: 1.5rem;
     font-weight: 600;
+    color: #ffffff !important; /* Changed to white */
 }
 
 .metric-card-sub {
     font-size: 0.75rem;
-    color: #10b981;
+    color: #03dac6;
 }
 
 /* Timetable grid */
@@ -155,30 +166,39 @@ body.app-body {
     display: grid;
     grid-template-columns: 100px repeat(5, 1fr);
     gap: 1px;
-    background-color: #d1d5db;
-    border-radius: 12px;
+    background-color: #333;
+    border-radius: 8px;
     overflow: hidden;
     margin-top: 1rem;
 }
 
 .timetable-cell {
-    background-color: #f9fafb;
+    background-color: #1e1e1e;
     padding: 0.6rem 0.75rem;
     font-size: 0.8rem;
+    color: #ffffff !important; /* Changed to white */
 }
 
 .timetable-header {
-    background-color: #e5e7eb;
+    background-color: #333;
     font-weight: 600;
+    color: #ffffff !important; /* Changed to white */
 }
 
 .text-muted-soft {
-    color: #9ca3af;
+    color: #cccccc !important; /* Changed to light gray */
     font-size: 0.8rem;
 }
+
+.text-muted {
+    color: #cccccc !important; /* Changed to light gray */
+}
+
 .timetable-wrapper {
     overflow-x: auto;
     margin-top: 20px;
+    border: 1px solid #333;
+    border-radius: 8px;
 }
 
 .timetable-table {
@@ -186,21 +206,34 @@ body.app-body {
     border-collapse: collapse;
     text-align: center;
     font-size: 13px;
+    color: #ffffff !important;
 }
 
 .timetable-table th,
 .timetable-table td {
-    border: 2px solid #444;   /* Darker, bold grid lines */
+    border: 1px solid #333;
+    color: #ffffff !important;
+}
+
+.table {
+    color: #ffffff !important;
+}
+
+.table th,
+.table td {
+    color: #ffffff !important;
 }
 
 .day-label {
     font-weight: 600;
-    background: #f0f0f0;
+    background: #333;
+    color: #ffffff !important;
 }
 
 .time-range {
     font-weight: 600;
     font-size: 12px;
+    color: #ffffff !important; /* Changed to white */
 }
 
 /* Cell height and layout */
@@ -208,11 +241,12 @@ body.app-body {
     height: 85px;
     vertical-align: top;
     padding: 6px;
+    background-color: #1e1e1e;
 }
 
 /* Empty cell text */
 .tt-empty {
-    color: #777;
+    color: #cccccc !important; /* Changed to light gray */
     font-style: italic;
     font-size: 12px;
     padding-top: 18px;
@@ -220,30 +254,177 @@ body.app-body {
 }
 
 .tt-course {
-    color: #ff6600; /* Orange */
+    color: #bb86fc !important;
     font-weight: 700;
 }
 
 .tt-room {
-    color: #0066ff; /* Blue */
+    color: #03dac6 !important;
     font-weight: 700;
 }
 
 .tt-faculty {
-    color: #b30000; /* Red */
+    color: #cf6679 !important;
     font-weight: 700;
 }
 
 .tt-section {
-    color: #008520; /* Green */
+    color: #4caf50 !important;
     font-weight: 700;
 }
 
 .period-number {
     font-weight: 700;
     margin-bottom: 2px;
+    color: #ffffff !important; /* Changed to white */
 }
 .clash-list {
     padding-left: 1.25rem;
     font-size: 0.85rem;
+    color: #ffffff !important; /* Changed to white */
+}
+
+/* Buttons */
+.btn-primary {
+    background-color: #bb86fc;
+    border-color: #bb86fc;
+    color: #121212;
+}
+
+.btn-primary:hover {
+    background-color: #a362ff;
+    border-color: #a362ff;
+}
+
+.btn-outline-secondary {
+    color: #ffffff !important; /* Changed to white */
+    border-color: #555;
+}
+
+.btn-outline-secondary:hover {
+    background-color: #333;
+    color: #ffffff;
+    border-color: #555;
+}
+
+.btn-outline-danger {
+    color: #cf6679 !important;
+    border-color: #cf6679;
+}
+
+.btn-outline-danger:hover {
+    background-color: #cf6679;
+    color: #121212;
+}
+
+/* Forms */
+.form-control {
+    background-color: #333;
+    border: 1px solid #555;
+    color: #ffffff !important; /* Changed to white */
+}
+
+.form-control:focus {
+    background-color: #333;
+    border-color: #bb86fc;
+    color: #ffffff !important; /* Changed to white */
+    box-shadow: 0 0 0 0.2rem rgba(187, 134, 252, 0.25);
+}
+
+.form-label {
+    color: #ffffff !important;
+}
+
+/* Alerts */
+.alert-success {
+    background-color: #03dac6;
+    color: #121212;
+    border-color: #03dac6;
+}
+
+.alert-danger {
+    background-color: #cf6679;
+    color: #121212;
+    border-color: #cf6679;
+}
+
+.alert-warning {
+    background-color: #f39c12;
+    color: #121212;
+    border-color: #f39c12;
+}
+
+.alert-info {
+    background-color: #3498db;
+    color: #121212;
+    border-color: #3498db;
+}
+
+/* Badge */
+.badge {
+    display: inline-block;
+    padding: .35em .65em;
+    font-size: .75em;
+    font-weight: 700;
+    line-height: 1;
+    color: #ffffff !important;
+    text-align: center;
+    white-space: nowrap;
+    vertical-align: baseline;
+    border-radius: .25rem;
+}
+
+.badge-soft {
+    background-color: #03dac6;
+    color: #121212;
+}
+
+/* Timetable Legend */
+.tt-legend {
+    display: flex;
+    gap: 1rem;
+    font-size: 0.8rem;
+    margin-bottom: 1rem;
+    color: #ffffff !important;
+}
+
+.tt-legend-course { color: #bb86fc !important; }
+.tt-legend-room { color: #03dac6 !important; }
+.tt-legend-faculty { color: #cf6679 !important; }
+.tt-legend-section { color: #4caf50 !important; }
+
+/* Timetable Period */
+.tt-period-num {
+    font-weight: 700;
+    color: #ffffff !important;
+}
+
+.tt-period-time {
+    font-size: 0.8rem;
+    color: #cccccc !important;
+}
+
+/* Timetable Cell Entry */
+.tt-cell-entry {
+    margin-bottom: 0.5rem;
+    color: #ffffff !important;
+}
+
+.card-title {
+    color: #ffffff !important;
+}
+
+.form-label-sm {
+    color: #ffffff !important;
+}
+
+.form-select {
+    background-color: #333;
+    border: 1px solid #555;
+    color: #ffffff;
+}
+
+.form-select option {
+    color: #ffffff;
+    background-color: #333;
 }
