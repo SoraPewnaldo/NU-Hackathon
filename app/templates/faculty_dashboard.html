@@ -8,6 +8,12 @@
     <span>Weekly schedule for {{ user.username }}</span>
 </div>
 
+<div class="actions mb-4">
+  <a href="{{ url_for('main.faculty_request_leave') }}" class="btn btn-primary">
+    Request Leave / Unavailability
+  </a>
+</div>
+
 <div class="row g-4">
     <div class="col-md-4">
         <!-- your overview card stays as you like -->

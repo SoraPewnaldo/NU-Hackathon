@@ -33,7 +33,11 @@
                 <th>{{ day.label }}</th>
                 {% for p in periods %}
                     {% set cell = grid[day.index][p.index] %}
-                    <td>
+                    <td class="tt-cell
+                        {% if cell and cell[0].status == 'RESCHEDULED_REPLACEMENT' %}bg-yellow-200{% endif %}
+                        {% if cell and cell[0].status == 'RESCHEDULED_MOVED' %}bg-blue-200{% endif %}
+                        {% if cell and cell[0].status == 'CANCELLED' %}bg-red-200 line-through{% endif %}
+                    ">
                         {% if cell %}
                             {% for entry in cell %}
                                 <div class="tt-cell-entry">
@@ -49,6 +53,7 @@
                                     <div class="tt-section">
                                         {{ entry.batch.name }}
                                     </div>
+                                    <small>{{ entry.status }}</small>
                                 </div>
                             {% endfor %}
                         {% endif %}

@@ -174,6 +174,21 @@ class FacultyUnavailableSlot(db.Model):
         return f"<FacultyUnavailableSlot faculty={self.faculty_id} slot={self.timeslot_id}>"
 
 
+class FacultyUnavailability(db.Model):
+    __tablename__ = "faculty_unavailability"
+
+    id = db.Column(db.Integer, primary_key=True)
+    faculty_id = db.Column(db.Integer, db.ForeignKey("faculty.id"), nullable=False)
+    day_of_week = db.Column(db.Integer, nullable=False)  # 0=Mon, 6=Sun
+    timeslot_id = db.Column(db.Integer, db.ForeignKey("timeslot.id"), nullable=True)  # NULL = whole day
+
+    reason = db.Column(db.String(255))
+    status = db.Column(db.String(20), default="PENDING")  # PENDING, APPROVED, REJECTED
+
+    faculty = db.relationship("Faculty", backref="unavailabilities")
+    timeslot = db.relationship("Timeslot", backref="unavailabilities", lazy="joined")
+
+
 # --------------------
 # TIMETABLE & ENTRIES
 # --------------------
@@ -207,6 +222,12 @@ class TimetableEntry(db.Model):
     faculty_id = db.Column(db.Integer, db.ForeignKey("faculty.id"), nullable=False)
     room_id = db.Column(db.Integer, db.ForeignKey("room.id"), nullable=False)
     timeslot_id = db.Column(db.Integer, db.ForeignKey("timeslot.id"), nullable=False)
+
+    # NEW:
+    status = db.Column(
+        db.String(30),
+        default="NORMAL"
+    )  # NORMAL, RESCHEDULED_REPLACEMENT, RESCHEDULED_MOVED, CANCELLED
 
     batch = db.relationship("Batch", backref=db.backref("timetable_entries", lazy="dynamic", cascade="all, delete-orphan"))
     subject = db.relationship("Subject", backref=db.backref("timetable_entries", lazy="dynamic"))

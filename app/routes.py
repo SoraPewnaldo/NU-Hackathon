@@ -1,5 +1,5 @@
 from datetime import datetime
-from flask import Blueprint, render_template, redirect, url_for, request, flash
+from flask import Blueprint, render_template, redirect, url_for, request, flash, abort
 from flask_login import login_user, logout_user, login_required, current_user
 from functools import wraps
 from sqlalchemy import func
@@ -15,9 +15,11 @@ from .models import (
     Faculty,
     FacultyUnavailableSlot,
     FacultySubject,
+    FacultyUnavailability, # Added this
 )
 from . import db
 from .scheduler import generate_timetable
+from .rescheduling import apply_faculty_unavailability # Added this
 
 def build_clash_report(timetable_id):
     """
@@ -1035,6 +1037,53 @@ def faculty_preferences():
         day_names=day_names,
     )
 
+@main.route("/faculty/leave", methods=["GET", "POST"])
+@login_required
+@roles_required("faculty", "hod", "admin") # HOD/admin can test, but main target is faculty
+def faculty_request_leave():
+    # assuming User -> Faculty relation exists
+    faculty = Faculty.query.filter_by(user_id=current_user.id).first()
+    if not faculty:
+        flash("Faculty profile not found.", "danger")
+        return redirect(url_for("main.dashboard"))
+
+    timeslots = Timeslot.query.order_by(
+        Timeslot.day_of_week, Timeslot.start_time
+    ).all()
+
+    if request.method == "POST":
+        day_of_week = int(request.form["day_of_week"])
+        timeslot_id = request.form.get("timeslot_id")
+        reason = request.form.get("reason", "").strip()
+
+        if timeslot_id == "FULL_DAY":
+            timeslot_id = None
+        elif timeslot_id:
+            timeslot_id = int(timeslot_id)
+
+        unav = FacultyUnavailability(
+            faculty_id=faculty.id,
+            day_of_week=day_of_week,
+            timeslot_id=timeslot_id,
+            reason=reason,
+            status="PENDING",
+        )
+        db.session.add(unav)
+        db.session.commit()
+        flash("Leave / unavailability request submitted for approval.", "success")
+        return redirect(url_for("main.faculty_request_leave"))
+
+    existing = FacultyUnavailability.query.filter_by(
+        faculty_id=faculty.id
+    ).order_by(FacultyUnavailability.id.desc()).all()
+
+    return render_template(
+        "faculty_leave.html",
+        faculty=faculty,
+        timeslots=timeslots,
+        existing=existing,
+    )
+
 
 from .models import Timetable, TimetableEntry, Timeslot, Batch, Faculty
 from datetime import datetime, time as dtime
@@ -1128,3 +1177,44 @@ def admin_timetable_metrics(timetable_id):
         timetable=timetable,
         metrics=metrics,
     )
+
+@main.route("/admin/leave_requests")
+@login_required
+@roles_required("admin", "hod")
+def admin_leave_requests():
+    requests = FacultyUnavailability.query.order_by(
+        FacultyUnavailability.status.desc(), FacultyUnavailability.id.desc()
+    ).all()
+    return render_template("admin_leave_requests.html", requests=requests)
+
+@main.route("/admin/leave_requests/<int:req_id>/approve", methods=["POST"])
+@login_required
+@roles_required("admin", "hod")
+def approve_leave(req_id):
+    unav = FacultyUnavailability.query.get_or_404(req_id)
+    if unav.status != "PENDING":
+        flash("Request already processed.", "warning")
+        return redirect(url_for("main.admin_leave_requests"))
+
+    unav.status = "APPROVED"
+    db.session.commit()
+
+    # Trigger rescheduling
+    changed_count = apply_faculty_unavailability(unav)
+    flash(f"Leave approved. Rescheduled {changed_count} affected classes.", "success")
+    return redirect(url_for("main.admin_leave_requests"))
+
+
+@main.route("/admin/leave_requests/<int:req_id>/reject", methods=["POST"])
+@login_required
+@roles_required("admin", "hod")
+def reject_leave(req_id):
+    unav = FacultyUnavailability.query.get_or_404(req_id)
+    if unav.status != "PENDING":
+        flash("Request already processed.", "warning")
+        return redirect(url_for("main.admin_leave_requests"))
+
+    unav.status = "REJECTED"
+    db.session.commit()
+    flash("Leave rejected.", "info")
+    return redirect(url_for("main.admin_leave_requests"))
