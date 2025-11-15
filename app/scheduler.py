@@ -19,6 +19,7 @@ def generate_timetable(name: str = "Auto Generated Timetable"):
     Returns the created Timetable instance or None if no solution.
     """
 
+    # We need an app context to talk to the DB when called from scripts/other code
     with current_app.app_context():
         rooms = Room.query.all()
         batches = Batch.query.all()
@@ -32,33 +33,33 @@ def generate_timetable(name: str = "Auto Generated Timetable"):
             return None
 
         # --------------------------------------------------
-        # 1) Build "class instances" that need scheduling
+        # 1) Build class instances (what we need to schedule)
         # --------------------------------------------------
-        # Each class instance = one period in the week:
-        # e.g. CSE-2A, CS201, taught by some faculty, lab or not
+        # Each class instance = one weekly session:
+        # (batch, subject, faculty, is_lab)
         class_instances = []
 
         for batch in batches:
             for subject in subjects:
-                # simple rule: match by semester
+                # simple rule: subject is only for matching semester
                 if subject.semester != batch.semester:
                     continue
 
-                # find faculties that can teach this subject
+                # Which faculties can teach this subject?
                 fs_mappings = FacultySubject.query.filter_by(
                     subject_id=subject.id
                 ).all()
                 if not fs_mappings:
-                    # no one can teach it → skip (or raise error)
                     print(
                         f"⚠️ No faculty mapping for subject {subject.code}, skipping."
                     )
                     continue
 
-                # For hackathon simplicity, pick the first faculty that can teach it
+                # For hackathon simplicity, pick first mapped faculty
                 faculty = fs_mappings[0].faculty
 
-                for i in range(subject.classes_per_week):
+                # classes_per_week tells us how many sessions this subject needs
+                for _ in range(subject.classes_per_week):
                     class_instances.append(
                         {
                             "batch_id": batch.id,
@@ -76,23 +77,24 @@ def generate_timetable(name: str = "Auto Generated Timetable"):
         num_rooms = len(rooms)
         num_slots = len(timeslots)
 
-        print(f"Building model for {num_classes} class instances...")
+        print(f"📊 Building model for {num_classes} class instances ...")
 
         # --------------------------------------------------
-        # 2) CP-SAT model
+        # 2) Define CP-SAT model and decision variables
         # --------------------------------------------------
         model = cp_model.CpModel()
 
-        # x[c, r, s] = 1 if class c is scheduled in room r at timeslot s
+        # x[c, r, s] = 1 if class c happens in room r at timeslot s
         x = {}
         for c in range(num_classes):
+            is_lab = class_instances[c]["is_lab"]
+
             for r in range(num_rooms):
-                # If lab is required, only allow lab-type rooms
-                is_lab = class_instances[c]["is_lab"]
+                # Lab subjects must be in lab rooms
                 if is_lab and rooms[r].room_type != "lab":
                     continue
+                # Optional rule: non-lab subjects don't use labs
                 if not is_lab and rooms[r].room_type == "lab":
-                    # optionally block non-lab subjects from using labs
                     continue
 
                 for s in range(num_slots):
@@ -102,7 +104,7 @@ def generate_timetable(name: str = "Auto Generated Timetable"):
         # 3) Constraints
         # --------------------------------------------------
 
-        # (a) Each class must be scheduled in exactly one (room, timeslot)
+        # (a) Each class must be scheduled exactly once
         for c in range(num_classes):
             relevant_vars = [
                 x[(c, r, s)]
@@ -115,7 +117,7 @@ def generate_timetable(name: str = "Auto Generated Timetable"):
                 return None
             model.Add(sum(relevant_vars) == 1)
 
-        # (b) No room clashes: at most one class per room per timeslot
+        # (b) Room clash: at most one class per room per timeslot
         for r in range(num_rooms):
             for s in range(num_slots):
                 vars_in_room_slot = [
@@ -126,9 +128,10 @@ def generate_timetable(name: str = "Auto Generated Timetable"):
                 if vars_in_room_slot:
                     model.Add(sum(vars_in_room_slot) <= 1)
 
-        # (c) No faculty clashes: a faculty cannot teach two classes at same slot
+        # (c) Faculty clash: a faculty can't be in two places at same time
+        all_faculties = Faculty.query.all()
         for s in range(num_slots):
-            for faculty in Faculty.query.all():
+            for faculty in all_faculties:
                 vars_for_faculty = []
                 for c in range(num_classes):
                     if class_instances[c]["faculty_id"] != faculty.id:
@@ -139,7 +142,7 @@ def generate_timetable(name: str = "Auto Generated Timetable"):
                 if vars_for_faculty:
                     model.Add(sum(vars_for_faculty) <= 1)
 
-        # (d) No batch clashes: a batch cannot attend two classes at same slot
+        # (d) Batch clash: a batch can't attend two classes at same time
         for s in range(num_slots):
             for batch in batches:
                 vars_for_batch = []
@@ -153,19 +156,10 @@ def generate_timetable(name: str = "Auto Generated Timetable"):
                     model.Add(sum(vars_for_batch) <= 1)
 
         # --------------------------------------------------
-        # 4) Objective (optional, simple)
-        # --------------------------------------------------
-        # For now we only need *feasibility*, not optimization.
-        # So we can either skip objective or add something trivial.
-        # model.Minimize(0)
-        # CP-SAT requires an objective if we call Minimize/Maximize;
-        # but we can also just call Solve() without it.
-
-        # --------------------------------------------------
-        # 5) Solve
+        # 4) Solve (we only care about "any" feasible solution)
         # --------------------------------------------------
         solver = cp_model.CpSolver()
-        solver.parameters.max_time_in_seconds = 10.0  # safety
+        solver.parameters.max_time_in_seconds = 10.0  # safety limit
 
         result_status = solver.Solve(model)
 
@@ -176,16 +170,14 @@ def generate_timetable(name: str = "Auto Generated Timetable"):
         print("✅ Timetable solution found. Saving to database...")
 
         # --------------------------------------------------
-        # 6) Persist solution into DB
+        # 5) Save solution as Timetable + TimetableEntry rows
         # --------------------------------------------------
         timetable = Timetable(name=name)
         db.session.add(timetable)
-        db.session.commit()  # so timetable.id is available
+        db.session.commit()  # now timetable.id is available
 
-        # Map index to actual DB ids
         for c in range(num_classes):
             ci = class_instances[c]
-            # find assigned (room, slot)
             chosen_room_id = None
             chosen_slot_id = None
 
@@ -213,7 +205,9 @@ def generate_timetable(name: str = "Auto Generated Timetable"):
             db.session.add(entry)
 
         db.session.commit()
-        print(f"✅ Timetable saved with id={timetable.id} and "
-              f"{timetable.entries.count()} entries.")
+        print(
+            f"✅ Timetable saved with id={timetable.id} and "
+            f"{timetable.entries.count()} entries."
+        )
 
         return timetable
