@@ -125,6 +125,109 @@ def build_clash_report(timetable_id):
         "room_clashes": room_clashes,
     }
 
+def build_scheduling_metrics(timetable_id):
+    """
+    Compute high-level scheduling metrics:
+      - room utilization (overall + per room)
+      - faculty load vs. max_load_per_week
+    """
+    from .models import Room, Faculty, Timeslot, TimetableEntry
+
+    # Base query for this timetable
+    base_q = TimetableEntry.query.filter_by(timetable_id=timetable_id)
+
+    # ---------- ROOM UTILIZATION ----------
+
+    rooms = Room.query.all()
+    timeslots = Timeslot.query.all()
+
+    total_room_slots = len(rooms) * len(timeslots)  # each room can host 1 class per slot
+
+    # Count how many (room, timeslot) combinations actually used
+    used_room_slots = (
+        base_q.with_entities(
+            TimetableEntry.room_id,
+            TimetableEntry.timeslot_id
+        )
+        .distinct()
+        .count()
+    )
+
+    overall_room_util_pct = (
+        (used_room_slots / total_room_slots * 100.0) if total_room_slots > 0 else 0.0
+    )
+
+    # Per-room utilization
+    per_room_util = []
+    for room in rooms:
+        room_classes = (
+            base_q.filter_by(room_id=room.id)
+            .with_entities(TimetableEntry.timeslot_id)
+            .distinct()
+            .count()
+        )
+        room_total_slots = len(timeslots)
+        room_util_pct = (
+            (room_classes / room_total_slots * 100.0) if room_total_slots > 0 else 0.0
+        )
+        per_room_util.append(
+            {
+                "room": room,
+                "classes": room_classes,
+                "total_slots": room_total_slots,
+                "util_pct": room_util_pct,
+            }
+        )
+
+    # ---------- FACULTY LOAD ----------
+
+    faculties = Faculty.query.all()
+    faculty_load = []
+    overloaded_count = 0
+
+    for fac in faculties:
+        classes_for_fac = base_q.filter_by(faculty_id=fac.id).count()
+        max_load = fac.max_load_per_week or 0
+
+        if max_load > 0:
+            load_pct = classes_for_fac / max_load * 100.0
+        else:
+            load_pct = 0.0
+
+        overloaded = max_load > 0 and classes_for_fac > max_load
+        if overloaded:
+            overloaded_count += 1
+
+        faculty_load.append(
+            {
+                "faculty": fac,
+                "classes": classes_for_fac,
+                "max_load": max_load,
+                "load_pct": load_pct,
+                "overloaded": overloaded,
+            }
+        )
+
+    # Aggregate faculty stats
+    total_faculty = len(faculties)
+    total_classes = sum(f["classes"] for f in faculty_load)
+    avg_classes_per_faculty = (total_classes / total_faculty) if total_faculty > 0 else 0.0
+
+    metrics = {
+        "overall_room_util_pct": overall_room_util_pct,
+        "used_room_slots": used_room_slots,
+        "total_room_slots": total_room_slots,
+        "per_room_util": per_room_util,
+
+        "faculty_load": faculty_load,
+        "total_faculty": total_faculty,
+        "total_classes": total_classes,
+        "avg_classes_per_faculty": avg_classes_per_faculty,
+        "overloaded_count": overloaded_count,
+    }
+
+    return metrics
+
 main = Blueprint("main", __name__)
 
 def roles_required(*roles):
@@ -1009,4 +1112,19 @@ def admin_timetable_clashes(timetable_id):
         faculty_clashes=faculty_clashes,
         room_clashes=room_clashes,
         total_clashes=total_clashes,
+    )
+
+@main.route("/admin/timetable/<int:timetable_id>/metrics")
+@login_required
+@roles_required("admin")
+def admin_timetable_metrics(timetable_id):
+    timetable = Timetable.query.get_or_404(timetable_id)
+
+    metrics = build_scheduling_metrics(timetable_id)
+
+    return render_template(
+        "admin_metrics.html",
+        user=current_user,
+        timetable=timetable,
+        metrics=metrics,
     )
