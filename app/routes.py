@@ -2,6 +2,7 @@ from datetime import datetime
 from flask import Blueprint, render_template, redirect, url_for, request, flash
 from flask_login import login_user, logout_user, login_required, current_user
 from functools import wraps
+from sqlalchemy import func
 
 from .models import (
     User,
@@ -17,6 +18,112 @@ from .models import (
 )
 from . import db
 from .scheduler import generate_timetable
+
+def build_clash_report(timetable_id):
+    """
+    Scan TimetableEntry for:
+      - batch clashes   (same batch, same timeslot, >1 class)
+      - faculty clashes (same faculty, same timeslot, >1 class)
+      - room clashes    (same room, same timeslot, >1 class)
+    Returns a dict with lists of conflicts.
+    """
+    from .models import TimetableEntry, Timeslot, Batch, Faculty, Room, Subject
+
+    # Base query for this timetable
+    base_q = TimetableEntry.query.filter_by(timetable_id=timetable_id)
+
+    # --- Batch clashes ---
+    batch_conf_keys = (
+        base_q.with_entities(
+            TimetableEntry.timeslot_id,
+            TimetableEntry.batch_id,
+            func.count(TimetableEntry.id).label("cnt"),
+        )
+        .group_by(TimetableEntry.timeslot_id, TimetableEntry.batch_id)
+        .having(func.count(TimetableEntry.id) > 1)
+        .all()
+    )
+
+    batch_clashes = []
+    for ts_id, batch_id, cnt in batch_conf_keys:
+        ts = Timeslot.query.get(ts_id)
+        batch = Batch.query.get(batch_id)
+        entries = (
+            base_q.filter_by(timeslot_id=ts_id, batch_id=batch_id)
+            .all()
+        )
+        batch_clashes.append(
+            {
+                "timeslot": ts,
+                "batch": batch,
+                "entries": entries,
+                "count": cnt,
+            }
+        )
+
+    # --- Faculty clashes ---
+    faculty_conf_keys = (
+        base_q.with_entities(
+            TimetableEntry.timeslot_id,
+            TimetableEntry.faculty_id,
+            func.count(TimetableEntry.id).label("cnt"),
+        )
+        .group_by(TimetableEntry.timeslot_id, TimetableEntry.faculty_id)
+        .having(func.count(TimetableEntry.id) > 1)
+        .all()
+    )
+
+    faculty_clashes = []
+    for ts_id, faculty_id, cnt in faculty_conf_keys:
+        ts = Timeslot.query.get(ts_id)
+        faculty = Faculty.query.get(faculty_id)
+        entries = (
+            base_q.filter_by(timeslot_id=ts_id, faculty_id=faculty_id)
+            .all()
+        )
+        faculty_clashes.append(
+            {
+                "timeslot": ts,
+                "faculty": faculty,
+                "entries": entries,
+                "count": cnt,
+            }
+        )
+
+    # --- Room clashes ---
+    room_conf_keys = (
+        base_q.with_entities(
+            TimetableEntry.timeslot_id,
+            TimetableEntry.room_id,
+            func.count(TimetableEntry.id).label("cnt"),
+        )
+        .group_by(TimetableEntry.timeslot_id, TimetableEntry.room_id)
+        .having(func.count(TimetableEntry.id) > 1)
+        .all()
+    )
+
+    room_clashes = []
+    for ts_id, room_id, cnt in room_conf_keys:
+        ts = Timeslot.query.get(ts_id)
+        room = Room.query.get(room_id)
+        entries = (
+            base_q.filter_by(timeslot_id=ts_id, room_id=room_id)
+            .all()
+        )
+        room_clashes.append(
+            {
+                "timeslot": ts,
+                "room": room,
+                "entries": entries,
+                "count": cnt,
+            }
+        )
+
+    return {
+        "batch_clashes": batch_clashes,
+        "faculty_clashes": faculty_clashes,
+        "room_clashes": room_clashes,
+    }
 
 main = Blueprint("main", __name__)
 
@@ -844,3 +951,30 @@ def build_grid_for_entries(entries, periods):
         grid[day_idx][p_idx].append(e)
 
     return grid
+
+@main.route("/admin/timetable/<int:timetable_id>/clashes")
+@login_required
+@roles_required("admin")
+def admin_timetable_clashes(timetable_id):
+    timetable = Timetable.query.get_or_404(timetable_id)
+
+    report = build_clash_report(timetable_id)
+    batch_clashes = report["batch_clashes"]
+    faculty_clashes = report["faculty_clashes"]
+    room_clashes = report["room_clashes"]
+
+    total_clashes = (
+        len(batch_clashes)
+        + len(faculty_clashes)
+        + len(room_clashes)
+    )
+
+    return render_template(
+        "admin_clashes.html",
+        user=current_user,
+        timetable=timetable,
+        batch_clashes=batch_clashes,
+        faculty_clashes=faculty_clashes,
+        room_clashes=room_clashes,
+        total_clashes=total_clashes,
+    )
