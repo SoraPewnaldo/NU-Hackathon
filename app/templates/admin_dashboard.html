@@ -10,8 +10,14 @@
         <div class="card h-100">
             <div class="card-body">
                 <div class="metric-card-label">Total Students</div>
-                <div class="metric-card-value">80</div>
-                <div class="metric-card-sub">+12% from last year</div>
+                <div class="metric-card-value">{{ total_students }}</div>
+                <div class="metric-card-sub">
+                    {% if student_percentage_change > 0 %}
+                        +{{ "%.2f"|format(student_percentage_change) }}% from last year
+                    {% else %}
+                        {{ "%.2f"|format(student_percentage_change) }}% from last year
+                    {% endif %}
+                </div>
             </div>
         </div>
     </div>

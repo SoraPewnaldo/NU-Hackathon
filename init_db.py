@@ -229,7 +229,7 @@ with app.app_context():
     # ---------- student users + Student profiles ----------
 
     # Small dataset: 80 students total, 20 per year-batch
-    target_students_per_batch = 20
+    target_students_per_batch = 50
 
     current_student_users = User.query.filter_by(role=User.ROLE_STUDENT).count()
     total_target_students = target_students_per_batch * 4  # 4 batches

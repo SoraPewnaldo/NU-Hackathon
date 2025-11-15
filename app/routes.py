@@ -220,6 +220,15 @@ def admin_dashboard():
         grid = build_grid_for_entries(entries, periods)
         has_timetable = True
 
+    total_students = User.query.filter_by(role="student").count()
+
+    # --- Calculate percentage change ---
+    # Hardcoded previous year's student count for demonstration
+    previous_year_students = 100 
+    percentage_change = 0
+    if previous_year_students > 0:
+        percentage_change = ((total_students - previous_year_students) / previous_year_students) * 100
+
     return render_template(
         "admin_dashboard.html",
         user=current_user,
@@ -228,7 +237,30 @@ def admin_dashboard():
         days=DAYS,
         periods=periods,
         grid=grid,
+        total_students=total_students,
+        student_percentage_change=percentage_change,
     )
+
+
+@main.route("/admin/add_test_student")
+@login_required
+@roles_required("admin")
+def admin_add_test_student():
+    username = f"test_student_{User.query.count() + 1}"
+    email = f"test_student_{User.query.count() + 1}@example.com"
+    password = "password" # Default password for test student
+
+    existing_user = User.query.filter((User.username == username) | (User.email == email)).first()
+    if existing_user:
+        flash(f"User {username} or {email} already exists.", "warning")
+        return redirect(url_for("main.admin_dashboard"))
+
+    new_user = User(username=username, email=email, role=User.ROLE_STUDENT)
+    new_user.set_password(password)
+    db.session.add(new_user)
+    db.session.commit()
+    flash(f"Test student '{username}' added successfully.", "success")
+    return redirect(url_for("main.admin_dashboard"))
 
 
 # -------------------------
