@@ -70,13 +70,14 @@ class Batch(db.Model):
     __tablename__ = "batch"
 
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(64), unique=True, nullable=False)  # e.g. CSE-2A
-    program = db.Column(db.String(64))  # e.g. BTech CSE
-    semester = db.Column(db.Integer, nullable=False)
-    size = db.Column(db.Integer, nullable=False)
+    name = db.Column(db.String(50), nullable=False)          # e.g. "CSE-Y1"
+    program = db.Column(db.String(100), nullable=False)      # e.g. "B.Tech CSE"
+    year = db.Column(db.Integer, nullable=False)             # 1,2,3,4
+    section = db.Column(db.String(10), nullable=True)        # e.g. "A"
+    is_active = db.Column(db.Boolean, default=True)
 
     def __repr__(self):
-        return f"<Batch {self.name} sem={self.semester} size={self.size}>"
+        return f"<Batch {self.name}>"
 
 
 class Subject(db.Model):
@@ -119,7 +120,7 @@ class Student(db.Model):
 
     # relationships
     user = db.relationship("User", backref=db.backref("student_profile", uselist=False))
-    batch = db.relationship("Batch", backref=db.backref("students", lazy=True))
+    batch = db.relationship("Batch", backref=db.backref("students", lazy=True, cascade="all, delete-orphan"))
 
     def __repr__(self):
         return f"<Student {self.roll_no} - {self.name}>"
@@ -205,7 +206,7 @@ class TimetableEntry(db.Model):
     room_id = db.Column(db.Integer, db.ForeignKey("room.id"), nullable=False)
     timeslot_id = db.Column(db.Integer, db.ForeignKey("timeslot.id"), nullable=False)
 
-    batch = db.relationship("Batch", backref=db.backref("timetable_entries", lazy="dynamic"))
+    batch = db.relationship("Batch", backref=db.backref("timetable_entries", lazy="dynamic", cascade="all, delete-orphan"))
     subject = db.relationship("Subject", backref=db.backref("timetable_entries", lazy="dynamic"))
     faculty = db.relationship("Faculty", backref=db.backref("timetable_entries", lazy="dynamic"))
     room = db.relationship("Room", backref=db.backref("timetable_entries", lazy="dynamic"))

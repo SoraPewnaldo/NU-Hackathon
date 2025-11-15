@@ -80,10 +80,10 @@ with app.app_context():
     if Batch.query.count() == 0:
         print("Seeding year-wise batches...")
         batches = [
-            Batch(name="CSE-Y1", program="BTech CSE", semester=1, size=20),
-            Batch(name="CSE-Y2", program="BTech CSE", semester=3, size=20),
-            Batch(name="CSE-Y3", program="BTech CSE", semester=5, size=20),
-            Batch(name="CSE-Y4", program="BTech CSE", semester=7, size=20),
+            Batch(name="CSE-Y1", program="BTech CSE", year=1, section="A"),
+            Batch(name="CSE-Y2", program="BTech CSE", year=2, section="A"),
+            Batch(name="CSE-Y3", program="BTech CSE", year=3, section="A"),
+            Batch(name="CSE-Y4", program="BTech CSE", year=4, section="A"),
         ]
         db.session.add_all(batches)
         db.session.commit()
@@ -262,7 +262,7 @@ with app.app_context():
             .limit(total_target_students)
             .all()
         )
-        batches = Batch.query.order_by(Batch.semester).all()  # Y1:Y4 -> sem 1,3,5,7
+        batches = Batch.query.order_by(Batch.year).all()  # Y1:Y4 -> year 1,2,3,4
 
         if len(batches) != 4:
             raise RuntimeError("Expected exactly 4 batches for 4 years.")

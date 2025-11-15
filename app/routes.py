@@ -124,6 +124,43 @@ def admin_dashboard():
     )
 
 
+@main.route("/admin/batches")
+@login_required
+def admin_batches():
+    # You can filter by department / role later
+    batches = Batch.query.order_by(Batch.year.asc(), Batch.name.asc()).all()
+    return render_template("admin_batches.html", batches=batches)
+
+
+@main.route("/admin/batches/add", methods=["POST"])
+@login_required
+def admin_add_batch():
+    name = request.form.get("name")
+    program = request.form.get("program")
+    year = request.form.get("year", type=int)
+    section = request.form.get("section")
+
+    if not name or not program or not year:
+        flash("Name, program, and year are required.", "danger")
+        return redirect(url_for("main.admin_batches"))
+
+    batch = Batch(name=name, program=program, year=year, section=section or None)
+    db.session.add(batch)
+    db.session.commit()
+    flash("Batch added successfully.", "success")
+    return redirect(url_for("main.admin_batches"))
+
+
+@main.route("/admin/batches/<int:batch_id>/delete", methods=["POST"])
+@login_required
+def admin_delete_batch(batch_id):
+    batch = Batch.query.get_or_404(batch_id)
+    db.session.delete(batch)
+    db.session.commit()
+    flash("Batch deleted.", "success")
+    return redirect(url_for("main.admin_batches"))
+
+
 @main.route("/hod/dashboard")
 @login_required
 @roles_required("admin", "hod")   # admin can also see HOD view if you want
@@ -135,37 +172,68 @@ def hod_dashboard():
 @login_required
 @roles_required("faculty", "hod", "admin")
 def faculty_dashboard():
-    faculty = current_user.faculty_profile
+    faculty = current_user.faculty_profile  # linked via Faculty.user_id
 
-    if not faculty:
-        flash("No faculty profile linked to this user.", "warning")
-        return render_template("faculty_dashboard.html", user=current_user, has_timetable=False)
-
+    # Latest generated timetable
     latest_tt = Timetable.query.order_by(Timetable.created_at.desc()).first()
-    if not latest_tt:
-        flash("No timetable generated yet.", "warning")
-        return render_template("faculty_dashboard.html", user=current_user, has_timetable=False)
 
-    periods = build_periods()
+    # If no timetable yet, just render the page with a message
+    if not latest_tt or not faculty:
+        return render_template(
+            "faculty_dashboard.html",
+            user=current_user,
+            days=[],
+            periods=[],
+            grid={},
+        )
+
+    # Get all timeslots (Mon–Sat, multiple periods per day)
+    all_slots = Timeslot.query.order_by(
+        Timeslot.day_of_week,
+        Timeslot.start_time
+    ).all()
+
+    # 1) Build list of unique periods: (start_time, end_time)
+    periods = []
+    for ts in all_slots:
+        key = (ts.start_time, ts.end_time)
+        if key not in periods:
+            periods.append(key)
+
+    # 2) Day indices + labels
+    days = [
+        (0, "MON"),
+        (1, "TUE"),
+        (2, "WED"),
+        (3, "THU"),
+        (4, "FRI"),
+        (5, "SAT"),
+    ]
+
+    # 3) Build grid: (day_index, period_index) -> entry (for this faculty only)
+    grid = {}
 
     entries = (
         TimetableEntry.query
         .filter_by(timetable_id=latest_tt.id, faculty_id=faculty.id)
-        .join(Timeslot)
-        .order_by(Timeslot.day_of_week, Timeslot.start_time)
         .all()
     )
 
-    grid = build_grid_for_entries(entries, periods)
+    for e in entries:
+        ts = e.timeslot
+        key = (ts.start_time, ts.end_time)
+        if key not in periods:
+            continue
+        p_idx = periods.index(key)          # which column
+        d_idx = ts.day_of_week             # which row
+        grid[(d_idx, p_idx)] = e
 
     return render_template(
         "faculty_dashboard.html",
         user=current_user,
-        has_timetable=True,
-        days=DAYS,
+        days=days,
         periods=periods,
         grid=grid,
-        faculty=faculty,
     )
 
 
@@ -219,28 +287,73 @@ def admin_generate_timetable():
 
 @main.route("/timetable/<int:timetable_id>")
 @login_required
-@roles_required("admin", "hod", "faculty", "student")
 def view_timetable(timetable_id):
+    # 1) Get timetable or 404
     timetable = Timetable.query.get_or_404(timetable_id)
 
-    periods = build_periods()
+    # 2) Get all timeslots, ordered by day + time
+    all_slots = Timeslot.query.order_by(
+        Timeslot.day_of_week, Timeslot.start_time
+    ).all()
+    if not all_slots:
+        flash("No timeslots defined yet.", "warning")
+        return render_template("timetable_view.html",
+                               timetable=timetable,
+                               days=[],
+                               periods=[],
+                               grid={})
 
-    entries = (
-        TimetableEntry.query
-        .filter_by(timetable_id=timetable.id)
-        .join(Timeslot)
-        .order_by(Timeslot.day_of_week, Timeslot.start_time)
-        .all()
-    )
+    # 3) Build unique period list (same time ranges for all days)
+    period_keys = []
+    for ts in all_slots:
+        key = (ts.start_time, ts.end_time)
+        if key not in period_keys:
+            period_keys.append(key)
 
-    grid = build_grid_for_entries(entries, periods)
+    # 4) Day index + label mapping
+    days = [
+        (0, "MON"),
+        (1, "TUE"),
+        (2, "WED"),
+        (3, "THU"),
+        (4, "FRI"),
+        (5, "SAT"),
+    ]
+
+    # 5) Map (day_index, period_index) -> Timeslot.id
+    slot_id_by_day_period = {}
+    for day_index, _ in days:
+        for p_idx, (start, end) in enumerate(period_keys):
+            ts = next(
+                (
+                    t for t in all_slots
+                    if t.day_of_week == day_index
+                    and t.start_time == start
+                    and t.end_time == end
+                ),
+                None,
+            )
+            if ts:
+                slot_id_by_day_period[(day_index, p_idx)] = ts.id
+
+    # 6) Load all entries for this timetable
+    entries = TimetableEntry.query.filter_by(timetable_id=timetable_id).all()
+
+    # 7) Build grid: (day_index, period_index) -> entry
+    grid = {}
+    for e in entries:
+        ts = e.timeslot
+        key = (ts.start_time, ts.end_time)
+        if key not in period_keys:
+            continue
+        p_idx = period_keys.index(key)
+        grid[(ts.day_of_week, p_idx)] = e
 
     return render_template(
         "timetable_view.html",
         timetable=timetable,
-        has_timetable=True,
-        days=DAYS,
-        periods=periods,
+        days=days,
+        periods=period_keys,
         grid=grid,
     )
 
@@ -251,12 +364,7 @@ def list_timetables():
     timetables = Timetable.query.order_by(Timetable.created_at.desc()).all()
     return render_template("timetable_list.html", timetables=timetables)
 
-@main.route("/batches")
-@login_required
-@roles_required("admin", "hod")
-def view_batches():
-    flash("Batches page is under construction.", "info")
-    return redirect(url_for("main.admin_dashboard"))
+
 
 @main.route("/students")
 @login_required

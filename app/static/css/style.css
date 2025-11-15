@@ -176,3 +176,65 @@ body.app-body {
     color: #9ca3af;
     font-size: 0.8rem;
 }
+.timetable-wrapper {
+    overflow-x: auto;
+    margin-top: 20px;
+}
+
+.timetable-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: center;
+    font-size: 13px;
+}
+
+.timetable-table th,
+.timetable-table td {
+    border: 2px solid #444;   /* Darker, bold grid lines */
+}
+
+.day-label {
+    font-weight: 600;
+    background: #f0f0f0;
+}
+
+.time-range {
+    font-weight: 600;
+    font-size: 12px;
+}
+
+/* Cell height and layout */
+.tt-cell {
+    height: 85px;
+    vertical-align: top;
+    padding: 6px;
+}
+
+/* Empty cell text */
+.tt-empty {
+    color: #777;
+    font-style: italic;
+    font-size: 12px;
+    padding-top: 18px;
+    display: block;
+}
+
+.tt-course {
+    color: #ff6600; /* Orange */
+    font-weight: 700;
+}
+
+.tt-room {
+    color: #0066ff; /* Blue */
+    font-weight: 700;
+}
+
+.tt-faculty {
+    color: #b30000; /* Red */
+    font-weight: 700;
+}
+
+.tt-section {
+    color: #008520; /* Green */
+    font-weight: 700;
+}

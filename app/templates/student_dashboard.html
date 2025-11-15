@@ -2,12 +2,14 @@
 {% block title %}Student · Intelligent Timetable{% endblock %}
 {% block content %}
 
-<h2>Student Dashboard</h2>
-<p>Welcome, {{ user.username }} (Student)</p>
+<div class="section-header">
+    <h2>Student Dashboard</h2>
+    <span>Weekly schedule for {{ batch.name if batch else user.username }}</span>
+</div>
 
 {% if not has_timetable %}
     <div class="alert alert-warning">
-        No timetable generated yet.
+        No timetable generated yet. Ask admin to run the scheduler.
     </div>
 {% else %}
     {% include "_timetable_grid.html" with context %}

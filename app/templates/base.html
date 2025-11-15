@@ -31,8 +31,8 @@
                class="sidebar-link">
                 <span class="icon">📅</span> Timetables
             </a>
-            <a href="{{ url_for('main.view_batches') }}"
-               class="sidebar-link">
+            <a href="{{ url_for('main.admin_batches') }}"
+               class="sidebar-link{% if request.endpoint == 'main.admin_batches' %} active{% endif %}">
                 <span class="icon">🎓</span> Batches
             </a>
             <a href="{{ url_for('main.view_students') }}"

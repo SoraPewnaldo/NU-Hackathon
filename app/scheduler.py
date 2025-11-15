@@ -49,8 +49,8 @@ def generate_timetable(name: str = "Auto Generated Timetable"):
 
         for batch in batches:
             for subject in subjects:
-                # simple rule: subject is only for matching semester
-                if subject.semester != batch.semester:
+                # simple rule: subject is only for a matching semester for the batch year
+                if subject.semester not in [batch.year * 2 - 1, batch.year * 2]:
                     continue
 
                 # Which faculties can teach this subject?

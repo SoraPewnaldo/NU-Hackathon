@@ -1,18 +1,92 @@
 {% extends "base.html" %}
 {% block title %}Faculty · Intelligent Timetable{% endblock %}
+
 {% block content %}
 
 <div class="section-header">
     <h2>Faculty Dashboard</h2>
-    <span>Weekly schedule for {{ faculty.name if faculty else user.username }}</span>
+    <span>Weekly schedule for {{ user.username }}</span>
 </div>
 
-{% if not has_timetable %}
-    <div class="alert alert-warning">
-        No timetable generated yet. Ask admin to run the scheduler.
+<div class="row g-4">
+    <div class="col-md-4">
+        <!-- your overview card stays as you like -->
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title mb-2">Overview</h5>
+                <p class="text-muted-soft mb-2">
+                    Auto-generated load for the week.
+                </p>
+                <!-- mock / calculated stats can go here -->
+            </div>
+        </div>
     </div>
-{% else %}
-    {% include "_timetable_grid.html" with context %}
-{% endif %}
+
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h5 class="card-title mb-0">Your Timetable</h5>
+                </div>
+                <p class="text-muted-soft mb-2">
+                    Generated from the latest timetable. Empty slots show "No Class".
+                </p>
+
+                {% if days and periods %}
+                <div class="timetable-wrapper">
+                    <table class="timetable-table">
+                        <thead>
+                            <tr>
+                                <th>Day / Time</th>
+                                {% for start, end in periods %}
+                                    <th>
+                                        <div class="time-range">
+                                            {{ start.strftime('%H:%M') }}<br>
+                                            - {{ end.strftime('%H:%M') }}
+                                        </div>
+                                    </th>
+                                {% endfor %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for day_index, day_label in days %}
+                            <tr>
+                                <td class="day-label">{{ day_label }}</td>
+
+                                {% for p_idx in range(periods|length) %}
+                                    {% set entry = grid.get((day_index, p_idx)) %}
+                                    <td class="tt-cell">
+                                        {% if entry %}
+                                            <div class="tt-course">
+                                                {{ entry.subject.code }} {{ entry.subject.name }}
+                                            </div>
+                                            <div class="tt-room">
+                                                {{ entry.room.name }}
+                                            </div>
+                                            <div class="tt-faculty">
+                                                {{ entry.faculty.name }}
+                                            </div>
+                                            <div class="tt-section">
+                                                {{ entry.batch.name }}
+                                            </div>
+                                        {% else %}
+                                            <div class="tt-empty">No Class</div>
+                                        {% endif %}
+                                    </td>
+                                {% endfor %}
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                    <p class="text-muted-soft mb-0">
+                        No timetable generated yet for you.
+                    </p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
 
 {% endblock %}
