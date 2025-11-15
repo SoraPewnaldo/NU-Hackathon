@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <h2>Dashboard</h2>
+        <p>Welcome, {{ user.username }}!</p>
+
+        <div class="alert alert-info">
+            This will later show:
+            <ul>
+                <li>Generate timetable button</li>
+                <li>Links to views for admin / HOD / faculty</li>
+                <li>Stats like clashes, room utilization, etc.</li>
+            </ul>
+        </div>
+    </div>
+</div>
+{% endblock %}
