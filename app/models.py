@@ -109,6 +109,22 @@ class Faculty(db.Model):
         return f"<Faculty {self.code} {self.name}>"
 
 
+class Student(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(120), nullable=False)
+    roll_no = db.Column(db.String(50), unique=True, nullable=False)
+
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), unique=True, nullable=False)
+    batch_id = db.Column(db.Integer, db.ForeignKey("batch.id"), nullable=False)
+
+    # relationships
+    user = db.relationship("User", backref=db.backref("student_profile", uselist=False))
+    batch = db.relationship("Batch", backref=db.backref("students", lazy=True))
+
+    def __repr__(self):
+        return f"<Student {self.roll_no} - {self.name}>"
+
+
 # --------------------
 # TIMESLOTS
 # --------------------
