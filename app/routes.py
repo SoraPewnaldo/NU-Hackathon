@@ -308,6 +308,14 @@ def dashboard():
         return redirect(url_for("main.logout"))
 
 
+def get_active_timetable():
+    return (
+        Timetable.query
+        .filter_by(is_active=True)
+        .order_by(Timetable.created_at.desc())
+        .first()
+    )
+
 @main.route("/admin/dashboard")
 @login_required
 @roles_required("admin")
@@ -548,14 +556,14 @@ def faculty_dashboard():
         .all()
     )
 
-    current_tt = Timetable.query.filter_by(is_active=True).order_by(Timetable.created_at.desc()).first()
+    active_tt = get_active_timetable()
 
     # If no faculty record or no timetable → show empty grid + message
-    if not current_tt or not faculty:
+    if not active_tt or not faculty:
         if not faculty:
             flash("Your user is not linked to any Faculty record (user_id).", "warning")
-        elif not current_tt:
-            flash("No timetable has been generated yet.", "warning")
+        elif not active_tt:
+            flash("No active timetable has been generated yet.", "warning")
 
         return render_template(
             "faculty_dashboard.html",
@@ -594,7 +602,7 @@ def faculty_dashboard():
     entries = (
         TimetableEntry.query
         .filter(
-            TimetableEntry.timetable_id == current_tt.id,
+            TimetableEntry.timetable_id == active_tt.id,
             TimetableEntry.faculty_id == faculty.id
         )
         .all()
@@ -614,7 +622,7 @@ def faculty_dashboard():
     # If entries is empty, we’ll show all "No Class" – which might be correct
     if not entries:
         flash(
-            f"No classes assigned to you in timetable #{current_tt.id}. "
+            f"No classes assigned to you in timetable #{active_tt.id}. "
             "Check FacultySubject mapping & scheduler.",
             "info",
         )
@@ -639,9 +647,9 @@ def student_dashboard():
     if hasattr(current_user, "batch_id") and current_user.batch_id:
         student_batch = Batch.query.get(current_user.batch_id)
 
-    current_tt = Timetable.query.filter_by(is_active=True).order_by(Timetable.created_at.desc()).first()
+    active_tt = get_active_timetable()
 
-    if not current_tt or not student_batch:
+    if not active_tt or not student_batch:
         flash("No timetable available or student not assigned to a batch.", "warning")
         return render_template(
             "student_dashboard.html",
@@ -677,7 +685,7 @@ def student_dashboard():
     entries = (
         TimetableEntry.query
         .filter(
-            TimetableEntry.timetable_id == current_tt.id,
+            TimetableEntry.timetable_id == active_tt.id,
             TimetableEntry.batch_id == student_batch.id
         )
         .all()
