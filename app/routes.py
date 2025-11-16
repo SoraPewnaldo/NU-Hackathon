@@ -976,7 +976,7 @@ def faculty_request_leave():
 
 from app.llm_client import call_llm
 from app.chat_context import build_faculty_context, build_admin_context
-from app.chat_memory import get_history, add_to_history
+from app.chat_memory import get_history, add_to_history, set_pending_action, get_pending_action, clear_pending_action
 import json
 from app.utils.scheduling import can_reschedule
 from app.ai_executor import execute_ai_action
@@ -986,10 +986,39 @@ from app.ai_executor import execute_ai_action
 def chat_api():
     data = request.get_json() or {}
     user_message = data.get("message", "").strip()
+    user_id = current_user.id
 
     if not user_message:
         return jsonify({"error": "Empty message"}), 400
 
+    # --- Handle "confirm" message ---
+    if user_message.lower() == "confirm":
+        pending_action = get_pending_action(user_id)
+        if pending_action:
+            action, params = pending_action
+            clear_pending_action(user_id) # Clear it immediately after retrieval
+
+            execution_result = execute_ai_action(action, params, current_user)
+            reply_text = f"Action confirmed and executed: {execution_result['message']}"
+            if not execution_result["success"]:
+                reply_text = f"Action confirmed but failed: {execution_result['message']}"
+
+            add_to_history(user_id, "user", user_message)
+            add_to_history(user_id, "assistant", reply_text)
+
+            return jsonify({
+                "reply": reply_text,
+                "action": action,
+                "params": params,
+                "execution_result": execution_result
+            })
+        else:
+            reply_text = "No pending action to confirm."
+            add_to_history(user_id, "user", user_message)
+            add_to_history(user_id, "assistant", reply_text)
+            return jsonify({"reply": reply_text, "action": "none", "params": {}, "execution_result": None})
+
+    # --- Normal LLM interaction ---
     role = getattr(current_user, "role", None)
     print("User role:", role)
     if role == "faculty":
@@ -1122,7 +1151,6 @@ You MUST respond with:
 """
 
     # ---- Conversation memory ----
-    user_id = current_user.id
     history = get_history(user_id)  # list of {role, content}
 
     # Build conversation for LLM: system + previous + new user message
@@ -1149,11 +1177,12 @@ You MUST respond with:
 
     execution_result = None
     if action != "none":
-        execution_result = execute_ai_action(action, params, current_user)
-        if execution_result["success"]:
-            reply_text += f"\n\nAction executed: {execution_result['message']}"
-        else:
-            reply_text += f"\n\nAction failed: {execution_result['message']}"
+        # Store pending action if it's not "none"
+        set_pending_action(user_id, action, params)
+        reply_text += "\n\n(Type 'confirm' to execute this action)"
+    else:
+        # If action is "none", clear any existing pending action
+        clear_pending_action(user_id)
 
     # Update memory
     add_to_history(user_id, "user", user_message)
@@ -1163,7 +1192,7 @@ You MUST respond with:
         "reply": reply_text,
         "action": action,
         "params": params,
-        "execution_result": execution_result
+        "execution_result": execution_result # execution_result will be None here unless it was a 'confirm'
     })
 
 
