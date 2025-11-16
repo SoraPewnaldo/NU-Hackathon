@@ -1,7 +1,9 @@
 # app/ai_executor.py
 
-from app.models import Batch, Faculty, TimetableEntry, Room, Timeslot
+from app.models import Batch, Faculty, TimetableEntry, Room, Timeslot, User, Student, Timetable
 from app import db
+from app.scheduler import generate_timetable # Import generate_timetable
+from datetime import datetime # Import datetime for naming timetables
 
 def execute_ai_action(action, params, user):
     # ---------- PERMISSIONS ----------
@@ -11,6 +13,7 @@ def execute_ai_action(action, params, user):
     admin_only_actions = {
         "create_batch",
         "create_faculty",
+        "create_student", # Added create_student
         "regenerate_timetable",
     }
 
@@ -58,24 +61,64 @@ def execute_ai_action(action, params, user):
 
         return {"success": True, "message": f"Faculty {name} created."}
 
-    # 3) REGENERATE TIMETABLE (admin-triggered)
+    # 3) CREATE STUDENT
+    if action == "create_student":
+        username = params.get("username")
+        email = params.get("email")
+        password = params.get("password")
+        batch_id = params.get("batch_id")
+
+        if not all([username, email, password, batch_id]):
+            return {"success": False, "message": "Username, email, password, and batch_id are required."}
+
+        # Check if username or email already exists
+        existing_user = User.query.filter((User.username == username) | (User.email == email)).first()
+        if existing_user:
+            return {"success": False, "message": f"User with username '{username}' or email '{email}' already exists."}
+
+        # Check if batch exists
+        batch = Batch.query.get(batch_id)
+        if not batch:
+            return {"success": False, "message": f"Batch with ID {batch_id} not found."}
+
+        # Create User
+        new_user = User(username=username, email=email, role=User.ROLE_STUDENT)
+        new_user.set_password(password)
+        db.session.add(new_user)
+        db.session.flush() # Flush to get user.id
+
+        # Create Student profile
+        new_student = Student(name=username, roll_no=f"STU-{new_user.id}", user_id=new_user.id, batch_id=batch_id)
+        db.session.add(new_student)
+        db.session.commit()
+
+        return {"success": True, "message": f"Student '{username}' created and assigned to batch '{batch.name}'."}
+
+
+    # 4) REGENERATE TIMETABLE (admin-triggered)
     if action == "regenerate_timetable":
         # You can read optional params or just ignore and regenerate everything
         even_or_odd = params.get("even_or_odd")  # "even" or "odd" or None
         semester = params.get("semester")        # number or None
 
-        # TODO: plug in your real timetable generation function here:
-        # from app.timetable import generate_timetable_for_semester
-        #
-        # if semester:
-        #     generate_timetable_for_semester(semester, even_or_odd)
-        # else:
-        #     generate_full_timetable()
+        # 1. Deactivate old timetables
+        Timetable.query.update({Timetable.is_active: False})
+        db.session.commit()
 
-        # For now, just pretend:
-        return {"success": True, "message": "Timetable regeneration triggered (stub, wire your generator here)."}
+        # 2. Create a new one and mark active
+        new_tt = Timetable(name=f"Timetable Generated on {datetime.now().strftime('%Y-%m-%d %H:%M')}", is_active=True)
+        db.session.add(new_tt)
+        db.session.commit()
 
-    # 4) RESCHEDULE ENTRY (can be allowed for faculty too)
+        # 3. Generate entries using new_tt.id
+        tt = generate_timetable(new_tt.name, new_tt.id) # Pass new_tt.id to generate_timetable
+
+        if tt is None:
+            return {"success": False, "message": "Failed to generate timetable. Check data and constraints."}
+        else:
+            return {"success": True, "message": f"Timetable #{tt.id} generated with {tt.entries.count()} entries and set as active."}
+
+    # 5) RESCHEDULE ENTRY (can be allowed for faculty too)
     if action == "reschedule_entry":
         entry_id = params.get("entry_id")
         new_ts_id = params.get("new_timeslot_id")

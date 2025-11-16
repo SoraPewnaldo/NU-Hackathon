@@ -1057,7 +1057,7 @@ Your JSON MUST follow this exact format:
 
 {{
   "reply_text": "short natural-language response",
-  "action": "none | create_batch | regenerate_timetable | reschedule_entry | create_faculty",
+  "action": "none | create_batch | regenerate_timetable | reschedule_entry | create_faculty | create_student",
   "params": {{
       "...": "..."   // whatever parameters are required
   }}
@@ -1069,6 +1069,7 @@ Admins can perform ANY action:
 - create_subject
 - create_room
 - create_faculty
+- create_student
 - assign_faculty_subject
 - regenerate_timetable
 
@@ -1104,6 +1105,14 @@ RULES FOR ACTION FORMAT:
 4) create_faculty requires:
 {{
   "name": "string"
+}}
+
+5) create_student requires:
+{{
+  "username": "string",
+  "email": "string",
+  "password": "string",
+  "batch_id": number
 }}
 
 If the user does NOT provide enough details:
@@ -1154,6 +1163,19 @@ You MUST respond with:
   "action": "create_faculty",
   "params": {{
     "name": "Sora"
+  }}
+}}
+
+If the user says: "create a new student named John Doe with email john@example.com and password pass123 for batch 1"
+You MUST respond with:
+{{
+  "reply_text": "Creating new student John Doe.",
+  "action": "create_student",
+  "params": {{
+    "username": "John Doe",
+    "email": "john@example.com",
+    "password": "pass123",
+    "batch_id": 1
   }}
 }}
 """
