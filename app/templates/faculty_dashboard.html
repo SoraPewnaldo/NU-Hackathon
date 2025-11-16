@@ -4,70 +4,15 @@
 
 <div class="section-header">
     <h2>Faculty Dashboard</h2>
-    <span>See your weekly schedule and teaching load at a glance.</span>
+    <span>Weekly schedule for {{ faculty.name if faculty else user.username }}</span>
 </div>
 
-<div class="row g-4">
-    <div class="col-md-4">
-        <div class="card">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                    <h5 class="card-title mb-0">Overview</h5>
-                    <span class="badge-soft">Live</span>
-                </div>
-                <p class="mb-2 text-muted-soft">
-                    {{ user.username }} · Faculty
-                </p>
-                <ul class="list-unstyled mb-0">
-                    <li>• Total classes this week: <strong>12</strong> (mock for now)</li>
-                    <li>• Max load: <strong>16 hours</strong></li>
-                    <li>• Departments: <strong>CSE</strong></li>
-                </ul>
-            </div>
-        </div>
+{% if not has_timetable %}
+    <div class="alert alert-warning">
+        No timetable generated yet. Ask admin to run the scheduler.
     </div>
-
-    <div class="col-md-8">
-        <div class="card">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                    <h5 class="card-title mb-0">Your Timetable</h5>
-                    <button class="btn btn-sm btn-primary" disabled>
-                        Export (coming soon)
-                    </button>
-                </div>
-                <p class="text-muted-soft mb-2">
-                    This is a placeholder grid. We’ll later fill it from TimetableEntry.
-                </p>
-
-                <div class="timetable-grid">
-                    <!-- Header row -->
-                    <div class="timetable-cell timetable-header"></div>
-                    <div class="timetable-cell timetable-header">Mon</div>
-                    <div class="timetable-cell timetable-header">Tue</div>
-                    <div class="timetable-cell timetable-header">Wed</div>
-                    <div class="timetable-cell timetable-header">Thu</div>
-                    <div class="timetable-cell timetable-header">Fri</div>
-
-                    <!-- Row 1 -->
-                    <div class="timetable-cell timetable-header">9–10</div>
-                    <div class="timetable-cell">DS · CSE-2A<br><span class="text-muted-soft">C-301</span></div>
-                    <div class="timetable-cell"></div>
-                    <div class="timetable-cell">Algo · CSE-2B<br><span class="text-muted-soft">C-302</span></div>
-                    <div class="timetable-cell"></div>
-                    <div class="timetable-cell"></div>
-
-                    <!-- Row 2 -->
-                    <div class="timetable-cell timetable-header">10–11</div>
-                    <div class="timetable-cell"></div>
-                    <div class="timetable-cell">DS · CSE-2A<br><span class="text-muted-soft">C-301</span></div>
-                    <div class="timetable-cell"></div>
-                    <div class="timetable-cell"></div>
-                    <div class="timetable-cell">Lab · CSE-2A<br><span class="text-muted-soft">Lab-1</span></div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+{% else %}
+    {% include "_timetable_grid.html" with context %}
+{% endif %}
 
 {% endblock %}

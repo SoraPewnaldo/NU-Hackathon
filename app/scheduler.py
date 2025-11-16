@@ -1,5 +1,6 @@
 from ortools.sat.python import cp_model
 from flask import current_app
+from datetime import time
 from .models import (
     Room,
     Batch,
@@ -9,6 +10,7 @@ from .models import (
     Timetable,
     TimetableEntry,
     FacultySubject,
+    FacultyUnavailableSlot,
 )
 from . import db
 
@@ -27,6 +29,12 @@ def generate_timetable(name: str = "Auto Generated Timetable"):
         timeslots = Timeslot.query.order_by(
             Timeslot.day_of_week, Timeslot.start_time
         ).all()
+
+        # Load unavailability: faculty_id -> set(timeslot_id)
+        unavailable_map = {}
+        all_unavail = FacultyUnavailableSlot.query.all()
+        for ua in all_unavail:
+            unavailable_map.setdefault(ua.faculty_id, set()).add(ua.timeslot_id)
 
         if not rooms or not batches or not subjects or not timeslots:
             print("❌ Not enough data to generate timetable.")
@@ -88,16 +96,26 @@ def generate_timetable(name: str = "Auto Generated Timetable"):
         x = {}
         for c in range(num_classes):
             is_lab = class_instances[c]["is_lab"]
+            faculty_id = class_instances[c]["faculty_id"]
+
+            # timeslots this faculty is unavailable
+            fac_unavail = unavailable_map.get(faculty_id, set())
 
             for r in range(num_rooms):
                 # Lab subjects must be in lab rooms
                 if is_lab and rooms[r].room_type != "lab":
                     continue
-                # Optional rule: non-lab subjects don't use labs
+                # Optional: non-lab subjects don't use labs
                 if not is_lab and rooms[r].room_type == "lab":
                     continue
 
                 for s in range(num_slots):
+                    ts_id = timeslots[s].id
+
+                    # If this faculty marked this timeslot as unavailable, skip it
+                    if ts_id in fac_unavail:
+                        continue
+
                     x[(c, r, s)] = model.NewBoolVar(f"x_c{c}_r{r}_s{s}")
 
         # --------------------------------------------------
@@ -154,6 +172,56 @@ def generate_timetable(name: str = "Auto Generated Timetable"):
                             vars_for_batch.append(x[(c, r, s)])
                 if vars_for_batch:
                     model.Add(sum(vars_for_batch) <= 1)
+
+        # -------------------------
+        # LUNCH BREAK CONSTRAINTS
+        # -------------------------
+        # For each batch, for each day: lunch break is either 12:30–13:30 OR 13:30–14:30.
+        # The solver decides which one (no user/batch choice).
+        lunch1_start = time(12, 30)
+        lunch2_start = time(13, 30)
+
+        for batch in batches:
+            for day in range(0, 5):  # Mon–Fri
+                slot_l1 = None
+                slot_l2 = None
+
+                # Find slot indexes for the two lunch slots for this day
+                for s, ts in enumerate(timeslots):
+                    if ts.day_of_week != day:
+                        continue
+                    if ts.start_time == lunch1_start:
+                        slot_l1 = s
+                    if ts.start_time == lunch2_start:
+                        slot_l2 = s
+
+                # If that day doesn't have both lunch slots, skip
+                if slot_l1 is None or slot_l2 is None:
+                    continue
+
+                # Binary decision: which slot is the BREAK
+                # z = 0 -> second slot (13:30–14:30) is break (no class there)
+                # z = 1 -> first slot (12:30–13:30) is break
+                z = model.NewBoolVar(f"lunch_choice_b{batch.id}_d{day}")
+
+                vars_l1 = []
+                vars_l2 = []
+
+                for c in range(num_classes):
+                    if class_instances[c]["batch_id"] != batch.id:
+                        continue
+                    for r in range(num_rooms):
+                        if (c, r, slot_l1) in x:
+                            vars_l1.append(x[(c, r, slot_l1)])
+                        if (c, r, slot_l2) in x:
+                            vars_l2.append(x[(c, r, slot_l2)])
+
+                # Because batch clash is already enforced, sum(...) <= 1 anyway.
+                # Here we force ONE of the two slots to be empty for this batch.
+                if vars_l1:
+                    model.Add(sum(vars_l1) <= 1 - z)
+                if vars_l2:
+                    model.Add(sum(vars_l2) <= z)
 
         # --------------------------------------------------
         # 4) Solve (we only care about "any" feasible solution)

@@ -55,4 +55,19 @@
     </div>
 </div>
 
+<div class="section-header mt-4">
+    <h2>Full Timetable Overview</h2>
+    {% if latest_tt %}
+        <span class="text-muted-soft">{{ latest_tt.name }}</span>
+    {% endif %}
+</div>
+
+{% if not has_timetable %}
+    <div class="alert alert-warning">
+        No timetable generated yet. Click "Generate New Timetable" above to create one.
+    </div>
+{% else %}
+    {% include "_timetable_grid.html" with context %}
+{% endif %}
+
 {% endblock %}
