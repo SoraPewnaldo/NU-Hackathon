@@ -35,7 +35,7 @@
             chatInput.value = "";
 
             try {
-                const res = await fetch("{{ url_for('main.chat_api') }}", {
+                const res = await fetch("{{ chat_api_url }}", {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json"

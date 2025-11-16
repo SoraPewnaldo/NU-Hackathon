@@ -1228,7 +1228,8 @@ You MUST respond with:
 @main.route("/get_chat_partial")
 @login_required
 def get_chat_partial():
-    return render_template("_chat_partial.html")
+    chat_api_url = url_for('main.chat_api')
+    return render_template("_chat_partial.html", chat_api_url=chat_api_url)
 
 
 @main.route("/admin/leave_requests/<int:req_id>/approve", methods=["POST"])
