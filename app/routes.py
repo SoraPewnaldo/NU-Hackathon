@@ -1225,6 +1225,11 @@ You MUST respond with:
         "execution_result": execution_result # execution_result will be None here unless it was a 'confirm'
     })
 
+@main.route("/get_chat_partial")
+@login_required
+def get_chat_partial():
+    return render_template("_chat_partial.html")
+
 
 @main.route("/admin/leave_requests/<int:req_id>/approve", methods=["POST"])
 @login_required

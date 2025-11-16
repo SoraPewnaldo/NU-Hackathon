@@ -1,0 +1,79 @@
+<div class="chat-popup-content">
+    <div class="chat-header">
+        <h3>AI Scheduling Assistant</h3>
+        <button class="close-chat-popup">&times;</button>
+    </div>
+    <div id="chat-log" class="chat-log">
+        <div><strong>Bot:</strong> Hi! I can help you analyse and reschedule timetables. Ask me anything.</div>
+    </div>
+    <div class="chat-input-area">
+        <input id="chat-input" type="text" placeholder="Ask about timetable or rescheduling...">
+        <button id="chat-send" type="button">Send</button>
+    </div>
+</div>
+
+<script>
+    // This script will be loaded dynamically with the partial
+    function initializeChatUI() {
+        const chatLog = document.getElementById("chat-log");
+        const chatInput = document.getElementById("chat-input");
+        const chatSend = document.getElementById("chat-send");
+        const closeChatPopup = document.querySelector(".close-chat-popup");
+        const chatPopupContainer = document.getElementById("chat-popup");
+
+        function appendMessage(sender, text) {
+            const div = document.createElement("div");
+            div.innerHTML = `<strong>${sender}:</strong> ${text}`;
+            chatLog.appendChild(div);
+            chatLog.scrollTop = chatLog.scrollHeight;
+        }
+
+        async function sendMessage() {
+            const text = chatInput.value.trim();
+            if (!text) return;
+            appendMessage("You", text);
+            chatInput.value = "";
+
+            try {
+                const res = await fetch("{{ url_for('main.chat_api') }}", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ message: text })
+                });
+
+                const data = await res.json();
+                if (data.reply) {
+                    appendMessage("Bot", data.reply);
+                }
+                if (data.execution_result) {
+                    appendMessage("System", data.execution_result.message);
+                    if (data.execution_result.success) {
+                        // optional refresh
+                        // location.reload();
+                    }
+                }
+                if (!data.reply && !data.execution_result) {
+                    appendMessage("Bot", "Unexpected response from server.");
+                }
+            } catch (err) {
+                appendMessage("Bot", "Network error.");
+            }
+        }
+
+        chatSend.addEventListener("click", sendMessage);
+        chatInput.addEventListener("keydown", function(e) {
+            if (e.key === "Enter") sendMessage();
+        });
+
+        closeChatPopup.addEventListener("click", () => {
+            chatPopupContainer.classList.remove('open');
+        });
+    }
+
+    // Call it once the partial is loaded
+    initializeChatUI();
+    // Make it globally accessible for re-initialization if needed
+    window.initializeChatUI = initializeChatUI;
+</script>

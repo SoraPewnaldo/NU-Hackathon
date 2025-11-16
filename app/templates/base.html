@@ -117,5 +117,43 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<!-- Floating Chat Button -->
+<button id="chat-fab" class="chat-fab">💬</button>
+
+<!-- Chat Pop-up Container -->
+<div id="chat-popup" class="chat-popup-container">
+    <!-- Chat UI will be loaded here dynamically -->
+</div>
+
+<script>
+    const chatFab = document.getElementById('chat-fab');
+    const chatPopup = document.getElementById('chat-popup');
+    let chatLoaded = false; // To prevent multiple loads
+
+    chatFab.addEventListener('click', async () => {
+        chatPopup.classList.toggle('open');
+
+        if (chatPopup.classList.contains('open') && !chatLoaded) {
+            try {
+                const response = await fetch("{{ url_for('main.get_chat_partial') }}"); // Assuming a new route for the partial
+                if (response.ok) {
+                    chatPopup.innerHTML = await response.text();
+                    chatLoaded = true;
+                    // Re-initialize chat JS if needed (e.g., event listeners)
+                    if (window.initializeChatUI) {
+                        window.initializeChatUI();
+                    }
+                } else {
+                    console.error('Failed to load chat partial:', response.statusText);
+                    chatPopup.innerHTML = '<div class="chat-error">Failed to load chat.</div>';
+                }
+            } catch (error) {
+                console.error('Error loading chat partial:', error);
+                chatPopup.innerHTML = '<div class="chat-error">Error loading chat.</div>';
+            }
+        }
+    });
+</script>
 </body>
 </html>
