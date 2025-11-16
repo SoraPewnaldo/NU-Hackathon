@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block title %}Manage Faculty · Intelligent Timetable{% endblock %}
+
+{% block content %}
+<div class="section-header">
+    <h2>Manage Faculty</h2>
+    <span>Add, edit, or remove faculty members.</span>
+</div>
+
+<div class="row g-4">
+    <!-- Add Faculty form -->
+    <div class="col-md-4">
+        <div class="card mb-3">
+            <div class="card-body">
+                <h5 class="card-title mb-3">Add Faculty</h5>
+                <form method="POST">
+                    <div class="mb-3">
+                        <label class="form-label">Name</label>
+                        <input name="name" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Code</label>
+                        <input name="code" class="form-control" required placeholder="e.g. F007">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Max Load / Week (hours)</label>
+                        <input name="max_load_per_week" class="form-control" type="number" min="1" max="40" value="16">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Link to User (optional)</label>
+                        <select name="user_id" class="form-select">
+                            <option value="">-- none --</option>
+                            {% for u in users %}
+                                <option value="{{ u.id }}">{{ u.username }} ({{ u.role }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">
+                        Add Faculty
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Faculty list -->
+    <div class="col-md-8">
+        <div class="card mb-3">
+            <div class="card-body">
+                <h5 class="card-title mb-3">Faculty List</h5>
+                {% if faculties %}
+                    <div class="table-responsive">
+                        <table class="table align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Code</th>
+                                    <th>Name</th>
+                                    <th>Max Load</th>
+                                    <th>Linked User</th>
+                                    <th style="width: 130px;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for fac in faculties %}
+                                <tr>
+                                    <td>{{ fac.code }}</td>
+                                    <td>{{ fac.name }}</td>
+                                    <td>{{ fac.max_load_per_week }}</td>
+                                    <td>
+                                        {% if fac.user %}
+                                            {{ fac.user.username }} ({{ fac.user.role }})
+                                        {% else %}
+                                            <span class="text-muted">None</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <a href="{{ url_for('main.admin_edit_faculty', faculty_id=fac.id) }}"
+                                           class="btn btn-sm btn-outline-secondary">
+                                            Edit
+                                        </a>
+                                        <form method="POST"
+                                              action="{{ url_for('main.admin_delete_faculty', faculty_id=fac.id) }}"
+                                              class="d-inline"
+                                              onsubmit="return confirm('Delete this faculty?');">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                Delete
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="text-muted mb-0">No faculty added yet.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

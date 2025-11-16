@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Faculty Leave / Unavailability Requests</h2>
+
+<table>
+  <tr>
+    <th>ID</th>
+    <th>Faculty</th>
+    <th>Day</th>
+    <th>Timeslot</th>
+    <th>Status</th>
+    <th>Reason</th>
+    <th>Actions</th>
+  </tr>
+  {% for r in requests %}
+  <tr>
+    <td>{{ r.id }}</td>
+    <td>{{ r.faculty.name }}</td>
+    <td>{{ r.day_of_week }}</td>
+    <td>
+      {% if r.timeslot %}
+        {{ r.timeslot.start_time.strftime("%H:%M") }}–{{ r.timeslot.end_time.strftime("%H:%M") }}
+      {% else %}
+        Full Day
+      {% endif %}
+    </td>
+    <td>{{ r.status }}</td>
+    <td>{{ r.reason }}</td>
+    <td>
+      {% if r.status == 'PENDING' %}
+      <form method="post" action="{{ url_for('main.approve_leave', req_id=r.id) }}" style="display:inline;">
+        <button type="submit">Approve + Reschedule</button>
+      </form>
+      <form method="post" action="{{ url_for('main.reject_leave', req_id=r.id) }}" style="display:inline;">
+        <button type="submit">Reject</button>
+      </form>
+      {% else %}
+        —
+      {% endif %}
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+{% endblock %}

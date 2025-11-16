@@ -1,0 +1,236 @@
+{% extends "base.html" %}
+{% block title %}Admin · Timetable System{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% block content %}
+
+<!-- Top metric cards -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="metric-card-label">Total Students</div>
+                <div class="metric-card-value">{{ total_students }}</div>
+                <div class="metric-card-sub">
+                    {% if student_percentage_change > 0 %}
+                        +{{ "%.2f"|format(student_percentage_change) }}% from last year
+                    {% else %}
+                        {{ "%.2f"|format(student_percentage_change) }}% from last year
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="metric-card-label">Faculty Members</div>
+                <div class="metric-card-value">20</div>
+                <div class="metric-card-sub text-muted">Active this semester</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="metric-card-label">Rooms Available</div>
+                <div class="metric-card-value">10</div>
+                <div class="metric-card-sub text-muted">2 under maintenance</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="metric-card-label">Active Timetables</div>
+                <div class="metric-card-value">4</div>
+                <div class="metric-card-sub text-muted">This academic year</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick actions + recent activity -->
+<div class="row g-3">
+    <div class="col-md-6">
+        <h6 class="mb-2">Quick Actions</h6>
+        <div class="row g-3">
+            <div class="col-6">
+                <div class="card h-100">
+                    <div class="card-body d-flex flex-column justify-content-between">
+                        <div>
+                            <h5 class="card-title mb-1">Create Timetable</h5>
+                            <p class="text-muted-soft mb-3">Run AI scheduler for selected batches.</p>
+                        </div>
+                        <a href="{{ url_for('main.admin_generate_timetable') }}"
+                           class="btn btn-primary btn-sm w-100">Generate</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6">
+                <div class="card h-100">
+                    <div class="card-body d-flex flex-column justify-content-between">
+                        <div>
+                            <h5 class="card-title mb-1">Manage Faculty</h5>
+                            <p class="text-muted-soft mb-3">Add / edit faculty and workloads.</p>
+                        </div>
+                        <a href="{{ url_for('main.admin_manage_faculty') }}"
+                           class="btn btn-outline-secondary btn-sm w-100">Open</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6">
+                <div class="card h-100">
+                    <div class="card-body d-flex flex-column justify-content-between">
+                        <div>
+                            <h5 class="card-title mb-1">Add Batch</h5>
+                            <p class="text-muted-soft mb-3">Create a new year / section.</p>
+                        </div>
+                        <a href="{{ url_for('main.admin_batches') }}"
+                           class="btn btn-outline-secondary btn-sm w-100">Add</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6">
+                                    <div class="card h-100">
+                                        <div class="card-body d-flex flex-column justify-content-between">
+                                            <div>
+                                                <h5 class="card-title mb-1">Room Setup</h5>
+                                                <p class="text-muted-soft mb-3">Manage capacities and statuses.</p>
+                                            </div>
+                                            <a href="{{ url_for('main.view_rooms') }}"
+                                               class="btn btn-outline-secondary btn-sm w-100">Manage</a>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="card h-100">
+                                        <div class="card-body d-flex flex-column justify-content-between">
+                                            <div>
+                                                <h5 class="card-title mb-1">Clash Report</h5>
+                                                <p class="text-muted-soft mb-3">Scan for timetable conflicts.</p>
+                                            </div>
+                                            <a href="{{ url_for('main.admin_timetable_clashes', timetable_id=1) }}"
+                                               class="btn btn-outline-danger btn-sm w-100">View Report</a>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="card h-100">
+                                        <div class="card-body d-flex flex-column justify-content-between">
+                                            <div>
+                                                <h5 class="card-title mb-1">Scheduling Metrics</h5>
+                                                <p class="text-muted-soft mb-3">Analyze timetable efficiency.</p>
+                                            </div>
+                                            <a href="{{ url_for('main.admin_timetable_metrics', timetable_id=1) }}"
+                                               class="btn btn-outline-info btn-sm w-100">View Metrics</a>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="card h-100">
+                                        <div class="card-body d-flex flex-column justify-content-between">
+                                            <div>
+                                                <h5 class="card-title mb-1">Faculty Leave Requests</h5>
+                                                <p class="text-muted-soft mb-3">Approve or reject faculty leave.</p>
+                                            </div>
+                                            <a href="{{ url_for('main.admin_leave_requests') }}"
+                                               class="btn btn-outline-warning btn-sm w-100">Review Requests</a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+    <!-- Recent Activity -->
+    <div class="col-md-6">
+        <h6 class="mb-2">Recent Activity</h6>
+        <div class="card">
+            <div class="card-body">
+                <ul class="list-unstyled mb-0 small">
+                    <li class="mb-3">
+                        <strong>Timetable created for CSE-Y1</strong><br>
+                        <span class="text-muted-soft">admin · 2 hours ago</span>
+                    </li>
+                    <li class="mb-3">
+                        <strong>New faculty member added: Dr. Smith</strong><br>
+                        <span class="text-muted-soft">admin · 5 hours ago</span>
+                    </li>
+                    <li class="mb-3">
+                        <strong>Batch CSE-Y2 updated</strong><br>
+                        <span class="text-muted-soft">hod_cse · 1 day ago</span>
+                    </li>
+                    <li>
+                        <strong>Room R-105 capacity changed</strong><br>
+                        <span class="text-muted-soft">admin · 2 days ago</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card" style="margin-top: 24px;">
+  <h3>AI Scheduling Assistant</h3>
+  <div id="chat-log" style="height: 250px; overflow-y: auto; border: 1px solid #ccc; padding: 8px; border-radius: 8px; margin-bottom: 8px; font-size: 0.9rem;">
+    <div><strong>Bot:</strong> Hi! I can help you analyse and reschedule timetables. Ask me anything.</div>
+  </div>
+  <div style="display: flex; gap: 8px;">
+    <input id="chat-input" type="text" placeholder="Ask about timetable or rescheduling..."
+           style="flex: 1; padding: 6px 10px; border-radius: 6px; border: 1px solid #aaa;">
+    <button id="chat-send" type="button">Send</button>
+  </div>
+</div>
+
+<script>
+  const chatLog = document.getElementById("chat-log");
+  const chatInput = document.getElementById("chat-input");
+  const chatSend = document.getElementById("chat-send");
+
+  function appendMessage(sender, text) {
+    const div = document.createElement("div");
+    div.innerHTML = `<strong>${sender}:</strong> ${text}`;
+    chatLog.appendChild(div);
+    chatLog.scrollTop = chatLog.scrollHeight;
+  }
+
+  async function sendMessage() {
+    const text = chatInput.value.trim();
+    if (!text) return;
+    appendMessage("You", text);
+    chatInput.value = "";
+
+    try {
+      const res = await fetch("{{ url_for('main.chat_api') }}", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ message: text })
+      });
+
+      const data = await res.json();
+      if (data.reply) {
+        appendMessage("Bot", data.reply);
+      }
+      if (data.execution_result) {
+          appendMessage("System", data.execution_result.message);
+          if (data.execution_result.success) {
+              // optional refresh
+              // location.reload();
+          }
+      }
+      if (!data.reply && !data.execution_result) {
+        appendMessage("Bot", "Unexpected response from server.");
+      }
+    } catch (err) {
+      appendMessage("Bot", "Network error.");
+    }
+  }
+
+  chatSend.addEventListener("click", sendMessage);
+  chatInput.addEventListener("keydown", function(e) {
+    if (e.key === "Enter") sendMessage();
+  });
+</script>
+
+{% endblock %}

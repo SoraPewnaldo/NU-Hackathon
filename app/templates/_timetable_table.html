@@ -1,0 +1,45 @@
+<div class="timetable-wrapper">
+    <table class="timetable-table">
+        <thead>
+            <tr>
+                <th>Day / Time</th>
+                {% for slot in timeslots %}
+                    <th>
+                        <div class="time-range">
+                            {{ slot.start_time.strftime('%H:%M') }}<br>
+                            - {{ slot.end_time.strftime('%H:%M') }}
+                        </div>
+                    </th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for day in days %}
+            <tr>
+                <td class="day-label">{{ day }}</td>
+                {% for slot in timeslots %}
+                    {% set entry = grid.get((day, slot.id)) %}
+                    <td class="tt-cell">
+                        {% if entry %}
+                            <div class="tt-course">
+                                {{ entry.subject.code }} {{ entry.subject.name }}
+                            </div>
+                            <div class="tt-room">
+                                {{ entry.room.name }}
+                            </div>
+                            <div class="tt-faculty">
+                                {{ entry.faculty.name }}
+                            </div>
+                            <div class="tt-section">
+                                {{ entry.batch.name }}
+                            </div>
+                        {% else %}
+                            <div class="tt-empty">No Class</div>
+                        {% endif %}
+                    </td>
+                {% endfor %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>

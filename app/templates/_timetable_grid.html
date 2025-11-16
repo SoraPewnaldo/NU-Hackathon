@@ -1,0 +1,60 @@
+<div class="tt-wrapper">
+    {% if title %}
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <h5 class="mb-0">{{ title }}</h5>
+            {% if subtitle %}
+                <span class="text-muted-soft">{{ subtitle }}</span>
+            {% endif %}
+        </div>
+    {% endif %}
+
+    <div class="tt-legend mb-2">
+        <span class="tt-legend-course">Course Name</span>
+        <span class="tt-legend-room">Room Name</span>
+        <span class="tt-legend-faculty">Faculty Name</span>
+        <span class="tt-legend-section">Section / Batch</span>
+    </div>
+
+    <table class="tt-table">
+        <thead>
+        <tr>
+            <th></th>
+            {% for p in periods %}
+                <th>
+                    <div class="tt-period-num">{{ p.index }}</div>
+                    <div class="tt-period-time">{{ p.label }}</div>
+                </th>
+            {% endfor %}
+        </tr>
+        </thead>
+        <tbody>
+        {% for day in days %}
+            <tr>
+                <th>{{ day.label }}</th>
+                {% for p in periods %}
+                    {% set cell = grid[day.index][p.index] %}
+                    <td class="tt-cell
+                        {% if cell and cell[0].status == 'RESCHEDULED_REPLACEMENT' %} bg-yellow-200 {% endif %}
+                        {% if cell and cell[0].status == 'RESCHEDULED_MOVED' %} bg-blue-200 {% endif %}
+                        {% if cell and cell[0].status == 'CANCELLED' %} bg-red-200 line-through {% endif %}
+                    ">
+                        {% if cell %}
+                            {% for entry in cell %}
+                                <div class="tt-cell-entry">
+                                    <strong>{{ entry.subject.code }} {{ entry.subject.name }}</strong><br>
+                                    {{ entry.faculty.name }}<br>
+                                    {{ entry.room.name }}<br>
+
+                                    {% if entry.status != 'NORMAL' %}
+                                        <small>{{ entry.status }}</small>
+                                    {% endif %}
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+                    </td>
+                {% endfor %}
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>

@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>{% block title %}Timetable System{% endblock %}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- Bootstrap -->
+    <link rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <!-- Your custom styles -->
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='css/style.css', v='1.0') }}">
+</head>
+<body class="app-body">
+
+<div class="app-layout">
+    <!-- SIDEBAR -->
+    <aside class="app-sidebar">
+        <div class="sidebar-header">
+            <span class="sidebar-logo">🧠</span>
+            <span class="sidebar-title">Timetable System</span>
+        </div>
+
+        <nav class="sidebar-nav">
+            <a href="{{ url_for('main.admin_dashboard') }}"
+               class="sidebar-link{% if request.path.endswith('/dashboard') %} active{% endif %}">
+                <span class="icon">🏠</span> Dashboard
+            </a>
+            <a href="{{ url_for('main.list_timetables') }}"
+               class="sidebar-link">
+                <span class="icon">📅</span> Timetables
+            </a>
+            <a href="{{ url_for('main.admin_batches') }}"
+               class="sidebar-link{% if request.endpoint == 'main.admin_batches' %} active{% endif %}">
+                <span class="icon">🎓</span> Batches
+            </a>
+            <a href="{{ url_for('main.view_students') }}"
+               class="sidebar-link">
+                <span class="icon">👨‍🎓</span> Students
+            </a>
+            <a href="{{ url_for('main.admin_manage_faculty') }}"
+               class="sidebar-link">
+                <span class="icon">👩‍🏫</span> Faculty
+            </a>
+            <a href="{{ url_for('main.view_subjects') }}"
+               class="sidebar-link">
+                <span class="icon">📚</span> Subjects
+            </a>
+            <a href="{{ url_for('main.view_rooms') }}"
+               class="sidebar-link">
+                <span class="icon">🏫</span> Rooms
+            </a>
+            <a href="{{ url_for('main.view_timeslots') }}"
+               class="sidebar-link">
+                <span class="icon">⏱️</span> Timeslots
+            </a>
+            <a href="{{ url_for('main.settings') }}"
+               class="sidebar-link">
+                <span class="icon">⚙️</span> Settings
+            </a>
+        </nav>
+
+        <div class="sidebar-footer">
+            {% if current_user.is_authenticated %}
+                <div class="sidebar-user">
+                    <div class="avatar-circle">{{ current_user.username[0] | upper }}</div>
+                    <div>
+                        <div class="user-name">{{ current_user.username }}</div>
+                        <div class="user-role text-muted">{{ current_user.role|capitalize }}</div>
+                    </div>
+                </div>
+                <a href="{{ url_for('main.logout') }}" class="btn btn-outline-secondary btn-sm w-100 mt-2">
+                    Logout
+                </a>
+            {% endif %}
+        </div>
+    </aside>
+
+    <!-- MAIN AREA -->
+    <div class="app-main">
+        <!-- TOP BAR -->
+        <header class="app-topbar">
+            <div class="topbar-left">
+                <h1 class="topbar-title">{% block page_title %}Dashboard{% endblock %}</h1>
+            </div>
+            <div class="topbar-right">
+                <form class="d-flex align-items-center gap-2">
+                    <label class="text-muted small mb-0">Switch User Role (Demo)</label>
+                    <select class="form-select form-select-sm" style="width: 180px;">
+                        <option>Admin</option>
+                        <option>HOD</option>
+                        <option>Faculty</option>
+                        <option>Student</option>
+                    </select>
+                </form>
+            </div>
+        </header>
+
+        <main class="app-content">
+            {% with messages = get_flashed_messages(with_categories=True) %}
+              {% if messages %}
+                <div class="mb-3">
+                  {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                      {{ message }}
+                      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                  {% endfor %}
+                </div>
+              {% endif %}
+            {% endwith %}
+
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+{% block title %}Clash Report · {{ timetable.name }}{% endblock %}
+
+{% block content %}
+<div class="section-header">
+    <h2>Clash Report</h2>
+    <span>Timetable: {{ timetable.name }} (id {{ timetable.id }})</span>
+</div>
+
+<div class="mb-3">
+    {% if total_clashes == 0 %}
+        <div class="alert alert-success mb-0">
+            ✅ No clashes detected for this timetable (batch, faculty, or room).
+        </div>
+    {% else %}
+        <div class="alert alert-danger mb-0">
+            ⚠️ {{ total_clashes }} clash group(s) detected across batches, faculty, and rooms.
+        </div>
+    {% endif %}
+</div>
+
+{% if batch_clashes %}
+<div class="card mb-3">
+    <div class="card-body">
+        <h5 class="card-title text-danger">Batch Clashes</h5>
+        <p class="text-muted-soft">
+            Same batch scheduled for multiple classes in the <strong>same timeslot</strong>.
+        </p>
+        <div class="table-responsive">
+            <table class="table table-sm align-middle">
+                <thead>
+                    <tr>
+                        <th>Batch</th>
+                        <th>Day</th>
+                        <th>Time</th>
+                        <th>Classes in clash</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for clash in batch_clashes %}
+                    {% set ts = clash.timeslot %}
+                    <tr class="table-danger">
+                        <td>{{ clash.batch.name }}</td>
+                        <td>{{ ts.day_of_week }}</td>
+                        <td>{{ ts.start_time.strftime('%H:%M') }}–{{ ts.end_time.strftime('%H:%M') }}</td>
+                        <td>
+                            <ul class="mb-0 clash-list">
+                                {% for e in clash.entries %}
+                                <li>
+                                    {{ e.subject.code }} {{ e.subject.name }}
+                                    · Room {{ e.room.name }}
+                                    · Faculty {{ e.faculty.name }}
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% if faculty_clashes %}
+<div class="card mb-3">
+    <div class="card-body">
+        <h5 class="card-title text-danger">Faculty Clashes</h5>
+        <p class="text-muted-soft">
+            Same faculty assigned to multiple batches in the <strong>same timeslot</strong>.
+        </p>
+        <div class="table-responsive">
+            <table class="table table-sm align-middle">
+                <thead>
+                    <tr>
+                        <th>Faculty</th>
+                        <th>Day</th>
+                        <th>Time</th>
+                        <th>Classes in clash</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for clash in faculty_clashes %}
+                    {% set ts = clash.timeslot %}
+                    <tr class="table-warning">
+                        <td>{{ clash.faculty.name }}</td>
+                        <td>{{ ts.day_of_week }}</td>
+                        <td>{{ ts.start_time.strftime('%H:%M') }}–{{ ts.end_time.strftime('%H:%M') }}</td>
+                        <td>
+                            <ul class="mb-0 clash-list">
+                                {% for e in clash.entries %}
+                                <li>
+                                    {{ e.subject.code }} {{ e.subject.name }}
+                                    · Batch {{ e.batch.name }}
+                                    · Room {{ e.room.name }}
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% if room_clashes %}
+<div class="card mb-3">
+    <div class="card-body">
+        <h5 class="card-title text-danger">Room Clashes</h5>
+        <p class="text-muted-soft">
+            Same room used for multiple batches in the <strong>same timeslot</strong>.
+        </p>
+        <div class="table-responsive">
+            <table class="table table-sm align-middle">
+                <thead>
+                    <tr>
+                        <th>Room</th>
+                        <th>Day</th>
+                        <th>Time</th>
+                        <th>Classes in clash</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for clash in room_clashes %}
+                    {% set ts = clash.timeslot %}
+                    <tr class="table-warning">
+                        <td>{{ clash.room.name }}</td>
+                        <td>{{ ts.day_of_week }}</td>
+                        <td>{{ ts.start_time.strftime('%H:%M') }}–{{ ts.end_time.strftime('%H:%M') }}</td>
+                        <td>
+                            <ul class="mb-0 clash-list">
+                                {% for e in clash.entries %}
+                                <li>
+                                    {{ e.subject.code }} {{ e.subject.name }}
+                                    · Batch {{ e.batch.name }}
+                                    · Faculty {{ e.faculty.name }}
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="mt-3">
+    <a href="{{ url_for('main.admin_dashboard') }}" class="btn btn-outline-secondary">
+        ← Back to Admin Dashboard
+    </a>
+</div>
+
+{% endblock %}

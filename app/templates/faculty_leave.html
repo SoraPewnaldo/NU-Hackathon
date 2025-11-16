@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Request Leave / Unavailability</h2>
+
+<form method="post">
+  <div>
+    <label>Day of Week</label>
+    <select name="day_of_week" required>
+      <option value="0">Monday</option>
+      <option value="1">Tuesday</option>
+      <option value="2">Wednesday</option>
+      <option value="3">Thursday</option>
+      <option value="4">Friday</option>
+      <option value="5">Saturday</option>
+      <option value="6">Sunday</option>
+    </select>
+  </div>
+
+  <div>
+    <label>Timeslot</label>
+    <select name="timeslot_id">
+      <option value="FULL_DAY">Full Day</option>
+      {% for ts in timeslots %}
+        <option value="{{ ts.id }}">
+          {{ ts.day_of_week }} - {{ ts.start_time.strftime("%H:%M") }}–{{ ts.end_time.strftime("%H:%M") }}
+        </option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div>
+    <label>Reason</label>
+    <textarea name="reason" rows="2"></textarea>
+  </div>
+
+  <button type="submit">Submit Request</button>
+</form>
+
+<hr>
+
+<h3>Your Requests</h3>
+<table>
+  <tr>
+    <th>ID</th>
+    <th>Day</th>
+    <th>Timeslot</th>
+    <th>Status</th>
+    <th>Reason</th>
+  </tr>
+  {% for u in existing %}
+  <tr>
+    <td>{{ u.id }}</td>
+    <td>{{ u.day_of_week }}</td>
+    <td>
+      {% if u.timeslot %}
+        {{ u.timeslot.start_time.strftime("%H:%M") }}–{{ u.timeslot.end_time.strftime("%H:%M") }}
+      {% else %}
+        Full Day
+      {% endif %}
+    </td>
+    <td>{{ u.status }}</td>
+    <td>{{ u.reason }}</td>
+  </tr>
+  {% endfor %}
+</table>
+
+{% endblock %}
